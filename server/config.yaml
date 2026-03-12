@@ -1,0 +1,19 @@
+server:
+  port: 8082
+  mode: debug  # debug | release
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: blog
+  sslmode: disable
+
+platform:
+  base_url: http://localhost:8080
+
+cors:
+  allowed_origins:
+    - http://localhost:5173
+    - http://localhost:8082

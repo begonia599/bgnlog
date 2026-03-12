@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+    environment:
+      POSTGRES_DB: blog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  blog:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - BLOG_SERVER_MODE=release
+      - BLOG_SERVER_PORT=8082
+      - BLOG_DATABASE_HOST=postgres
+      - BLOG_DATABASE_PORT=5432
+      - BLOG_DATABASE_USER=postgres
+      - BLOG_DATABASE_PASSWORD=postgres
+      - BLOG_DATABASE_DBNAME=blog
+      - BLOG_DATABASE_SSLMODE=disable
+      - BLOG_PLATFORM_BASE_URL=http://app:8080
+    networks:
+      - default
+      - myplatform_default
+
+volumes:
+  pgdata:
+
+networks:
+  myplatform_default:
+    external: true

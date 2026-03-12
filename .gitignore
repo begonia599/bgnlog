@@ -1,0 +1,32 @@
+# IDE / AI tools
+.agent/
+.agents/
+.claude/
+.factory/
+.kiro/
+.windsurf/
+.vscode/
+.idea/
+.mcp.json
+skills-lock.json
+
+# Dependencies
+node_modules/
+server/vendor/
+
+# Build output
+server/server.exe
+server/server
+web/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.exe
+*.exe~
+
+# Misc
+*.swp
+*.swo
