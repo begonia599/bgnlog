@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { ChevronDown, Github, Mail, MapPin, Sparkles } from 'lucide-react'
+import { ChevronDown, Github, Mail, Sparkles } from 'lucide-react'
 import { settingsApi } from '@/api'
 
 const defaultTitle = 'Hello, World.'
@@ -142,13 +142,6 @@ export function Hero() {
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
-            </div>
-
-            <span className="h-5 w-px bg-border" />
-
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
-              <MapPin className="h-3 w-3" />
-              <span>China</span>
             </div>
           </motion.div>
         </div>
