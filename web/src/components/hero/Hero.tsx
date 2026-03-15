@@ -5,7 +5,8 @@ import { settingsApi } from '@/api'
 
 const defaultTitle = 'Hello, World.'
 const defaultSubtitle = '思考、记录、分享'
-const defaultAvatarUrl = 'https://core.bgnhub.me/api/imagebed/1'
+const defaultAvatarUrl = ''
+const defaultNickname = ''
 
 const charVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -43,6 +44,7 @@ export function Hero() {
   const [title, setTitle] = useState(defaultTitle)
   const [subtitle, setSubtitle] = useState(defaultSubtitle)
   const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl)
+  const [nickname, setNickname] = useState(defaultNickname)
 
   useEffect(() => {
     fetch('https://v1.hitokoto.cn/?c=d&c=i&c=k')
@@ -56,6 +58,7 @@ export function Hero() {
         if (s.hero_title) setTitle(s.hero_title)
         if (s.hero_subtitle) setSubtitle(s.hero_subtitle)
         if (s.hero_avatar_url) setAvatarUrl(s.hero_avatar_url)
+        if (s.hero_nickname) setNickname(s.hero_nickname)
       })
       .catch(() => {})
   }, [])
@@ -66,7 +69,7 @@ export function Hero() {
 
   return (
     <section className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
-      <div className="mx-auto flex w-full max-w-4xl flex-col-reverse items-center gap-12 px-6 md:flex-row md:gap-16">
+      <div className="mx-auto flex w-full max-w-4xl flex-col-reverse items-center gap-10 px-6 md:flex-row md:gap-16">
         {/* Left — text */}
         <div className="flex flex-1 flex-col items-center text-center md:items-start md:text-left">
           {/* Staggered title */}
@@ -129,20 +132,38 @@ export function Hero() {
           </motion.div>
         </div>
 
-        {/* Right — avatar */}
+        {/* Right — avatar + nickname */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.2 }}
-          className="flex-shrink-0"
+          className="flex flex-col items-center gap-4 flex-shrink-0"
         >
-          <div className="h-36 w-36 rounded-full bg-gradient-to-br from-primary/10 to-accent ring-2 ring-border/50 sm:h-44 sm:w-44 md:h-52 md:w-52 flex items-center justify-center overflow-hidden">
-            <img
-              src={avatarUrl}
-              alt="Begonia Sinclair"
-              className="h-full w-full object-cover"
-            />
+          <div className="relative group">
+            <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/30 via-accent/30 to-primary/10 blur-md opacity-60 group-hover:opacity-80 transition-opacity" />
+            <div className="relative h-36 w-36 rounded-full ring-2 ring-border/40 sm:h-44 sm:w-44 md:h-48 md:w-48 flex items-center justify-center overflow-hidden bg-muted">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={nickname || 'Avatar'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-5xl sm:text-6xl md:text-7xl select-none">👤</span>
+              )}
+            </div>
           </div>
+
+          {nickname && (
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, type: 'spring' as const, stiffness: 200, damping: 20 }}
+              className="text-base font-medium text-muted-foreground tracking-wide"
+            >
+              {nickname}
+            </motion.p>
+          )}
         </motion.div>
       </div>
 

@@ -106,9 +106,18 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	// Auto-sync admin's avatar to hero settings on every page load
-	if me.User.Role == "admin" && me.Profile.AvatarURL != "" {
-		_ = h.settings.SetMultiple(map[string]string{"hero_avatar_url": me.Profile.AvatarURL})
+	// Auto-sync admin's avatar and nickname to hero settings on every page load
+	if me.User.Role == "admin" {
+		pairs := map[string]string{}
+		if me.Profile.AvatarURL != "" {
+			pairs["hero_avatar_url"] = me.Profile.AvatarURL
+		}
+		if me.Profile.Nickname != "" {
+			pairs["hero_nickname"] = me.Profile.Nickname
+		}
+		if len(pairs) > 0 {
+			_ = h.settings.SetMultiple(pairs)
+		}
 	}
 
 	pkg.Success(c, me)

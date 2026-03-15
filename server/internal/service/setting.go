@@ -2,7 +2,7 @@ package service
 
 import "blog-server/internal/repository"
 
-var heroKeys = []string{"hero_title", "hero_subtitle", "hero_avatar_url"}
+var heroKeys = []string{"hero_title", "hero_subtitle", "hero_avatar_url", "hero_nickname"}
 
 type SettingService struct {
 	repo *repository.SettingRepository
@@ -17,6 +17,7 @@ type HeroSettings struct {
 	Title     string `json:"hero_title"`
 	Subtitle  string `json:"hero_subtitle"`
 	AvatarURL string `json:"hero_avatar_url"`
+	Nickname  string `json:"hero_nickname"`
 }
 
 // GetHeroSettings returns the hero section settings.
@@ -29,6 +30,7 @@ func (s *SettingService) GetHeroSettings() (*HeroSettings, error) {
 		Title:     m["hero_title"],
 		Subtitle:  m["hero_subtitle"],
 		AvatarURL: m["hero_avatar_url"],
+		Nickname:  m["hero_nickname"],
 	}, nil
 }
 

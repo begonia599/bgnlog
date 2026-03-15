@@ -85,6 +85,7 @@ export interface HeroSettings {
   hero_title: string
   hero_subtitle: string
   hero_avatar_url: string
+  hero_nickname: string
 }
 
 export const settingsApi = {
