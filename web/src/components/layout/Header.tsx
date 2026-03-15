@@ -93,6 +93,14 @@ export function Header() {
             scrolled && 'shadow-lg shadow-black/[0.04] dark:shadow-black/[0.2]',
           )}
         >
+          {/* Logo + site name */}
+          <Link to="/" className="flex items-center gap-1.5 rounded-full px-2 py-1 mr-1">
+            <img src="/logo.png" alt="海棠小栈" className="h-5 w-5 rounded-sm" />
+            <span className="text-sm font-serif font-semibold tracking-wide hidden sm:inline">海棠小栈</span>
+          </Link>
+
+          <span className="h-4 w-px bg-border/50 mx-0.5" />
+
           {/* Nav items */}
           {navItems.map((item) => (
             <Link
