@@ -20,6 +20,7 @@ type Handlers struct {
 	Tag      *handler.TagHandler
 	Comment  *handler.CommentHandler
 	Upload   *handler.UploadHandler
+	Setting  *handler.SettingHandler
 }
 
 func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk.Client, cfg *config.Config) {
@@ -80,6 +81,10 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 
 		// Archives
 		api.GET("/archives", h.Article.Archives)
+
+		// Site settings
+		api.GET("/settings/hero", h.Setting.GetHero)
+		api.PUT("/settings/hero", auth.AuthRequired(), middleware.RequireRole("admin"), h.Setting.UpdateHero)
 	}
 
 	// In release mode, serve static frontend files

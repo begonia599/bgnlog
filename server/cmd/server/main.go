@@ -7,6 +7,7 @@ import (
 	"blog-server/internal/config"
 	"blog-server/internal/handler"
 	"blog-server/internal/middleware"
+	"blog-server/internal/model"
 	"blog-server/internal/repository"
 	"blog-server/internal/router"
 	"blog-server/internal/service"
@@ -30,6 +31,11 @@ func main() {
 	}
 	log.Println("Database connected")
 
+	// Auto-migrate site settings table
+	if err := db.AutoMigrate(&model.SiteSetting{}); err != nil {
+		log.Fatalf("Failed to migrate site_settings: %v", err)
+	}
+
 	// Platform SDK
 	plat := sdk.New(&sdk.Config{
 		BaseURL: cfg.Platform.BaseURL,
@@ -48,12 +54,14 @@ func main() {
 	categoryRepo := repository.NewCategoryRepository(db)
 	tagRepo := repository.NewTagRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
+	settingRepo := repository.NewSettingRepository(db)
 
 	// Services
 	articleSvc := service.NewArticleService(articleRepo, tagRepo)
 	categorySvc := service.NewCategoryService(categoryRepo)
 	tagSvc := service.NewTagService(tagRepo)
 	commentSvc := service.NewCommentService(commentRepo, articleRepo)
+	settingSvc := service.NewSettingService(settingRepo)
 
 	platformPublicURL := cfg.Platform.PublicURL
 	if platformPublicURL == "" {
@@ -67,6 +75,7 @@ func main() {
 	tagHandler := handler.NewTagHandler(tagSvc)
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	uploadHandler := handler.NewUploadHandler(plat, adminPlat)
+	settingHandler := handler.NewSettingHandler(settingSvc)
 
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(plat)
@@ -85,6 +94,7 @@ func main() {
 		Tag:      tagHandler,
 		Comment:  commentHandler,
 		Upload:   uploadHandler,
+		Setting:  settingHandler,
 	}, authMiddleware, plat, cfg)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

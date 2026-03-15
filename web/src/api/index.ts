@@ -79,3 +79,16 @@ export const uploadApi = {
 export const archiveApi = {
   list: () => api.get<ApiResponse<ArchiveItem[]>>('/api/archives'),
 }
+
+// Site Settings
+export interface HeroSettings {
+  hero_title: string
+  hero_subtitle: string
+  hero_avatar_url: string
+}
+
+export const settingsApi = {
+  getHero: () => api.get<ApiResponse<HeroSettings>>('/api/settings/hero'),
+  updateHero: (data: Partial<HeroSettings>) =>
+    api.put<ApiResponse<HeroSettings>>('/api/settings/hero', data),
+}

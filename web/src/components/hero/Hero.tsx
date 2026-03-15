@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { ChevronDown, Github } from 'lucide-react'
+import { settingsApi } from '@/api'
 
-const title = 'Hello, World.'
-const subtitle = '思考、记录、分享'
+const defaultTitle = 'Hello, World.'
+const defaultSubtitle = '思考、记录、分享'
+const defaultAvatarUrl = 'https://core.bgnhub.me/api/imagebed/1'
 
 const charVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -38,12 +40,24 @@ const socialIcons = [
 
 export function Hero() {
   const [hitokoto, setHitokoto] = useState('')
+  const [title, setTitle] = useState(defaultTitle)
+  const [subtitle, setSubtitle] = useState(defaultSubtitle)
+  const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl)
 
   useEffect(() => {
     fetch('https://v1.hitokoto.cn/?c=d&c=i&c=k')
       .then((r) => r.json())
       .then((data) => setHitokoto(data.hitokoto || ''))
       .catch(() => setHitokoto('生活明朗，万物可爱。'))
+
+    settingsApi.getHero()
+      .then((res) => {
+        const s = res.data.data
+        if (s.hero_title) setTitle(s.hero_title)
+        if (s.hero_subtitle) setSubtitle(s.hero_subtitle)
+        if (s.hero_avatar_url) setAvatarUrl(s.hero_avatar_url)
+      })
+      .catch(() => {})
   }, [])
 
   const scrollToContent = () => {
@@ -124,7 +138,7 @@ export function Hero() {
         >
           <div className="h-36 w-36 rounded-full bg-gradient-to-br from-primary/10 to-accent ring-2 ring-border/50 sm:h-44 sm:w-44 md:h-52 md:w-52 flex items-center justify-center overflow-hidden">
             <img
-              src="https://core.bgnhub.me/api/imagebed/1"
+              src={avatarUrl}
               alt="Begonia Sinclair"
               className="h-full w-full object-cover"
             />
