@@ -40,18 +40,14 @@ func (s *SettingService) GetHeroSettings() (*HeroSettings, error) {
 
 // UpdateHeroSettings updates the hero section settings.
 func (s *SettingService) UpdateHeroSettings(h *HeroSettings) error {
-	pairs := map[string]string{}
-	if h.Title != "" {
-		pairs["hero_title"] = h.Title
+	pairs := map[string]string{
+		"hero_title":      h.Title,
+		"hero_subtitle":   h.Subtitle,
+		"discord_user_id": h.DiscordID,
 	}
-	if h.Subtitle != "" {
-		pairs["hero_subtitle"] = h.Subtitle
-	}
+	// Only update avatar/nickname/bio if explicitly set (these are auto-synced from profile)
 	if h.AvatarURL != "" {
 		pairs["hero_avatar_url"] = h.AvatarURL
-	}
-	if len(pairs) == 0 {
-		return nil
 	}
 	return s.repo.SetMultiple(pairs)
 }
