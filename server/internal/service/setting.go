@@ -2,7 +2,7 @@ package service
 
 import "blog-server/internal/repository"
 
-var heroKeys = []string{"hero_title", "hero_subtitle", "hero_avatar_url", "hero_nickname", "hero_bio"}
+var heroKeys = []string{"hero_title", "hero_subtitle", "hero_avatar_url", "hero_nickname", "hero_bio", "discord_user_id"}
 
 type SettingService struct {
 	repo *repository.SettingRepository
@@ -14,11 +14,12 @@ func NewSettingService(repo *repository.SettingRepository) *SettingService {
 
 // HeroSettings represents the hero section configuration.
 type HeroSettings struct {
-	Title     string `json:"hero_title"`
-	Subtitle  string `json:"hero_subtitle"`
-	AvatarURL string `json:"hero_avatar_url"`
-	Nickname  string `json:"hero_nickname"`
-	Bio       string `json:"hero_bio"`
+	Title        string `json:"hero_title"`
+	Subtitle     string `json:"hero_subtitle"`
+	AvatarURL    string `json:"hero_avatar_url"`
+	Nickname     string `json:"hero_nickname"`
+	Bio          string `json:"hero_bio"`
+	DiscordID    string `json:"discord_user_id"`
 }
 
 // GetHeroSettings returns the hero section settings.
@@ -33,6 +34,7 @@ func (s *SettingService) GetHeroSettings() (*HeroSettings, error) {
 		AvatarURL: m["hero_avatar_url"],
 		Nickname:  m["hero_nickname"],
 		Bio:       m["hero_bio"],
+		DiscordID: m["discord_user_id"],
 	}, nil
 }
 

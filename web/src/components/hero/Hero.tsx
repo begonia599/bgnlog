@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { ChevronDown, Github, Mail, Sparkles } from 'lucide-react'
 import { settingsApi } from '@/api'
+import { DiscordPresence } from './DiscordPresence'
 
 const defaultTitle = 'Hello, World.'
 const defaultSubtitle = '思考、记录、分享'
@@ -44,6 +45,7 @@ export function Hero() {
   const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl)
   const [nickname, setNickname] = useState(defaultNickname)
   const [bio, setBio] = useState(defaultBio)
+  const [discordId, setDiscordId] = useState('')
 
   useEffect(() => {
     fetch('https://v1.hitokoto.cn/?c=d&c=i&c=k')
@@ -59,6 +61,7 @@ export function Hero() {
         if (s.hero_avatar_url) setAvatarUrl(s.hero_avatar_url)
         if (s.hero_nickname) setNickname(s.hero_nickname)
         if (s.hero_bio) setBio(s.hero_bio)
+        if (s.discord_user_id) setDiscordId(s.discord_user_id)
       })
       .catch(() => {})
   }, [])
@@ -144,6 +147,18 @@ export function Hero() {
               ))}
             </div>
           </motion.div>
+
+          {/* Discord Presence */}
+          {discordId && (
+            <motion.div
+              custom={1.3}
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+            >
+              <DiscordPresence userId={discordId} />
+            </motion.div>
+          )}
         </div>
 
         {/* Right — avatar card */}

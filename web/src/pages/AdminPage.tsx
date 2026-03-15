@@ -20,6 +20,7 @@ export default function AdminPage() {
   // Hero settings
   const [heroTitle, setHeroTitle] = useState('')
   const [heroSubtitle, setHeroSubtitle] = useState('')
+  const [discordId, setDiscordId] = useState('')
   const [heroSaving, setHeroSaving] = useState(false)
   const [heroSaved, setHeroSaved] = useState(false)
 
@@ -34,6 +35,7 @@ export default function AdminPage() {
       const s = res.data.data
       setHeroTitle(s.hero_title || '')
       setHeroSubtitle(s.hero_subtitle || '')
+      setDiscordId(s.discord_user_id || '')
     }).catch(() => {})
   }, [])
 
@@ -43,6 +45,7 @@ export default function AdminPage() {
       await settingsApi.updateHero({
         hero_title: heroTitle,
         hero_subtitle: heroSubtitle,
+        discord_user_id: discordId,
       })
       setHeroSaved(true)
       setTimeout(() => setHeroSaved(false), 2000)
@@ -108,6 +111,20 @@ export default function AdminPage() {
                   onChange={(e) => setHeroSubtitle(e.target.value)}
                   placeholder="思考、记录、分享"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label>Discord 用户 ID</Label>
+                <Input
+                  value={discordId}
+                  onChange={(e) => setDiscordId(e.target.value)}
+                  placeholder="例如 123456789012345678"
+                />
+                <p className="text-[11px] text-muted-foreground/60">
+                  用于显示实时在线状态。需先加入{' '}
+                  <a href="https://discord.gg/lanyard" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                    Lanyard 服务器
+                  </a>
+                </p>
               </div>
             </div>
             <div className="flex justify-end">
