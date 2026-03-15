@@ -34,7 +34,8 @@ func (d *DatabaseConfig) DSN() string {
 }
 
 type PlatformConfig struct {
-	BaseURL string `mapstructure:"base_url"`
+	BaseURL   string `mapstructure:"base_url"`
+	PublicURL string `mapstructure:"public_url"`
 }
 
 type CORSConfig struct {
@@ -62,6 +63,7 @@ func Load() (*Config, error) {
 		"database.dbname",
 		"database.sslmode",
 		"platform.base_url",
+		"platform.public_url",
 	} {
 		_ = viper.BindEnv(key)
 	}

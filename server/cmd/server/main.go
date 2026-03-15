@@ -55,8 +55,13 @@ func main() {
 	tagSvc := service.NewTagService(tagRepo)
 	commentSvc := service.NewCommentService(commentRepo, articleRepo)
 
+	platformPublicURL := cfg.Platform.PublicURL
+	if platformPublicURL == "" {
+		platformPublicURL = cfg.Platform.BaseURL
+	}
+
 	// Handlers
-	authHandler := handler.NewAuthHandler(plat)
+	authHandler := handler.NewAuthHandler(plat, platformPublicURL)
 	articleHandler := handler.NewArticleHandler(articleSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	tagHandler := handler.NewTagHandler(tagSvc)

@@ -33,6 +33,7 @@ services:
       - BLOG_DATABASE_DBNAME=blog
       - BLOG_DATABASE_SSLMODE=disable
       - BLOG_PLATFORM_BASE_URL=http://app:8080
+      - BLOG_PLATFORM_PUBLIC_URL=https://core.bgnhub.me
     networks:
       - default
       - myplatform_default

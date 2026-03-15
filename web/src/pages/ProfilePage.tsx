@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { authApi } from '@/api'
 import type { UserProfile } from '@/types'
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { motion } from 'framer-motion'
-import { Pencil, Save, X, User, Shield, Calendar } from 'lucide-react'
+import { Pencil, Save, X, User, Shield, Calendar, Camera, Loader2 } from 'lucide-react'
 
 export default function ProfilePage() {
     const { user } = useAuth()
@@ -18,11 +18,13 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [uploading, setUploading] = useState(false)
 
     // Edit form state
     const [nickname, setNickname] = useState('')
     const [bio, setBio] = useState('')
     const [avatarUrl, setAvatarUrl] = useState('')
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
         authApi.getProfile()
@@ -47,6 +49,22 @@ export default function ProfilePage() {
 
     const cancelEditing = () => {
         setEditing(false)
+    }
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) return
+
+        setUploading(true)
+        try {
+            const res = await authApi.uploadAvatar(file)
+            setAvatarUrl(res.data.data.url)
+        } catch (err) {
+            console.error('Failed to upload avatar', err)
+        } finally {
+            setUploading(false)
+        }
     }
 
     const handleSave = async () => {
@@ -91,14 +109,40 @@ export default function ProfilePage() {
                 <CardContent className="pt-8 pb-6">
                     {/* Avatar & basic info */}
                     <div className="flex flex-col items-center gap-4 mb-8">
-                        <Avatar className="h-24 w-24 ring-2 ring-border/50">
-                            {(editing ? avatarUrl : profile?.avatar_url) && (
-                                <AvatarImage src={editing ? avatarUrl : profile?.avatar_url} />
+                        <div className="relative group">
+                            <Avatar className="h-24 w-24 ring-2 ring-border/50">
+                                {(editing ? avatarUrl : profile?.avatar_url) && (
+                                    <AvatarImage src={editing ? avatarUrl : profile?.avatar_url} />
+                                )}
+                                <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                                    {user?.username?.[0]?.toUpperCase() || 'U'}
+                                </AvatarFallback>
+                            </Avatar>
+
+                            {editing && (
+                                <>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleAvatarUpload}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? (
+                                            <Loader2 className="h-6 w-6 text-white animate-spin" />
+                                        ) : (
+                                            <Camera className="h-6 w-6 text-white" />
+                                        )}
+                                    </button>
+                                </>
                             )}
-                            <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                                {user?.username?.[0]?.toUpperCase() || 'U'}
-                            </AvatarFallback>
-                        </Avatar>
+                        </div>
 
                         {!editing && (
                             <div className="text-center">
@@ -152,9 +196,11 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="avatar_url">头像 URL</Label>
+                                <Label>头像</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    点击上方头像选择图片，或手动输入 URL
+                                </p>
                                 <Input
-                                    id="avatar_url"
                                     value={avatarUrl}
                                     onChange={(e) => setAvatarUrl(e.target.value)}
                                     placeholder="https://example.com/avatar.jpg"

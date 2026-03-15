@@ -12,6 +12,11 @@ export const authApi = {
   getProfile: () => api.get<ApiResponse<UserProfile>>('/auth/profile'),
   updateProfile: (data: { nickname?: string; avatar_url?: string; bio?: string }) =>
     api.put<ApiResponse<UserProfile>>('/auth/profile', data),
+  uploadAvatar: (file: File) => {
+    const form = new FormData()
+    form.append('avatar', file)
+    return api.post<ApiResponse<{ url: string }>>('/auth/avatar', form)
+  },
 }
 
 // Articles

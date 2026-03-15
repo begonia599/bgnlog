@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useState, useEffect, useRef } from 'react'
 import { SearchBar } from '@/components/common/SearchBar'
 import { motion, useMotionValueEvent, useScroll, AnimatePresence } from 'framer-motion'
@@ -178,6 +178,7 @@ export function Header() {
                 )}
               >
                 <Avatar className="h-5 w-5">
+                  {user.avatar_url && <AvatarImage src={user.avatar_url} />}
                   <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
                     {user.username[0].toUpperCase()}
                   </AvatarFallback>

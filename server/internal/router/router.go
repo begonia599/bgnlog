@@ -43,6 +43,7 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		authGroup.GET("/me", auth.AuthRequired(), h.Auth.Me)
 		authGroup.GET("/profile", auth.AuthRequired(), h.Auth.GetProfile)
 		authGroup.PUT("/profile", auth.AuthRequired(), h.Auth.UpdateProfile)
+		authGroup.POST("/avatar", auth.AuthRequired(), h.Auth.UploadAvatar)
 	}
 
 	api := r.Group("/api")

@@ -4,6 +4,7 @@ import (
 	"blog-server/internal/pkg"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -12,11 +13,12 @@ import (
 )
 
 type AuthHandler struct {
-	plat *sdk.Client
+	plat      *sdk.Client
+	publicURL string // platform public URL for image serving
 }
 
-func NewAuthHandler(plat *sdk.Client) *AuthHandler {
-	return &AuthHandler{plat: plat}
+func NewAuthHandler(plat *sdk.Client, platformPublicURL string) *AuthHandler {
+	return &AuthHandler{plat: plat, publicURL: platformPublicURL}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -131,6 +133,37 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 	pkg.Success(c, profile)
+}
+
+func (h *AuthHandler) UploadAvatar(c *gin.Context) {
+	token, _ := c.Get("token")
+	client := h.plat.WithToken(token.(string))
+
+	fh, err := c.FormFile("avatar")
+	if err != nil {
+		pkg.Error(c, http.StatusBadRequest, "missing avatar file")
+		return
+	}
+
+	src, err := fh.Open()
+	if err != nil {
+		pkg.Error(c, http.StatusInternalServerError, "failed to open file")
+		return
+	}
+	defer src.Close()
+
+	img, err := client.ImageBed.UploadReader(fh.Filename, src)
+	if err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+
+	// Build public URL
+	publicURL := fmt.Sprintf("%s/api/imagebed/%d", h.publicURL, img.ID)
+
+	pkg.Success(c, gin.H{
+		"url": publicURL,
+	})
 }
 
 func forwardPlatformError(c *gin.Context, err error) {
