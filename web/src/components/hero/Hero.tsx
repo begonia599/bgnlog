@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { ChevronDown, Github } from 'lucide-react'
+import { ChevronDown, Github, Mail, MapPin, Sparkles } from 'lucide-react'
 import { settingsApi } from '@/api'
 
 const defaultTitle = 'Hello, World.'
 const defaultSubtitle = '思考、记录、分享'
 const defaultAvatarUrl = ''
 const defaultNickname = ''
+const defaultBio = ''
 
 const charVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -31,12 +32,9 @@ const fadeUp = {
   }),
 }
 
-const socialIcons = [
-  {
-    icon: Github,
-    href: 'https://github.com',
-    label: 'GitHub',
-  },
+const socialLinks = [
+  { icon: Github, href: 'https://github.com/begonia599', label: 'GitHub' },
+  { icon: Mail, href: 'mailto:begonia@bgnhub.me', label: 'Email' },
 ]
 
 export function Hero() {
@@ -45,6 +43,7 @@ export function Hero() {
   const [subtitle, setSubtitle] = useState(defaultSubtitle)
   const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl)
   const [nickname, setNickname] = useState(defaultNickname)
+  const [bio, setBio] = useState(defaultBio)
 
   useEffect(() => {
     fetch('https://v1.hitokoto.cn/?c=d&c=i&c=k')
@@ -59,6 +58,7 @@ export function Hero() {
         if (s.hero_subtitle) setSubtitle(s.hero_subtitle)
         if (s.hero_avatar_url) setAvatarUrl(s.hero_avatar_url)
         if (s.hero_nickname) setNickname(s.hero_nickname)
+        if (s.hero_bio) setBio(s.hero_bio)
       })
       .catch(() => {})
   }, [])
@@ -69,11 +69,18 @@ export function Hero() {
 
   return (
     <section className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden">
-      <div className="mx-auto flex w-full max-w-4xl flex-col-reverse items-center gap-10 px-6 md:flex-row md:gap-16">
-        {/* Left — text */}
+      {/* Decorative background shapes */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-primary/[0.03] blur-3xl" />
+        <div className="absolute bottom-32 right-16 w-96 h-96 rounded-full bg-accent/40 blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-48 h-48 rounded-full bg-primary/[0.02] blur-2xl" />
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 px-6 md:flex-row md:gap-16 lg:gap-20">
+        {/* Left — text content */}
         <div className="flex flex-1 flex-col items-center text-center md:items-start md:text-left">
           {/* Staggered title */}
-          <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+          <h1 className="mb-3 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
             {title.split('').map((char, i) => (
               <motion.span
                 key={i}
@@ -89,80 +96,101 @@ export function Hero() {
             ))}
           </h1>
 
-          {/* Subtitle */}
-          <motion.p
-            custom={0.8}
+          {/* Subtitle with decorative line */}
+          <motion.div
+            custom={0.7}
             initial="hidden"
             animate="visible"
             variants={fadeUp}
-            className="mb-8 text-lg text-muted-foreground"
+            className="mb-6 flex items-center gap-3"
           >
-            {subtitle}
-          </motion.p>
+            <Sparkles className="h-4 w-4 text-muted-foreground/50" />
+            <p className="text-lg text-muted-foreground">{subtitle}</p>
+          </motion.div>
 
-          {/* Social icons */}
+          {/* Bio */}
+          {bio && (
+            <motion.p
+              custom={0.9}
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+              className="mb-8 max-w-md text-sm leading-relaxed text-muted-foreground/80"
+            >
+              {bio}
+            </motion.p>
+          )}
+
+          {/* Social links + location */}
           <motion.div
-            className="flex items-center gap-3"
+            className="flex items-center gap-4"
+            custom={1.1}
             initial="hidden"
             animate="visible"
-            variants={{
-              visible: { transition: { staggerChildren: 0.08, delayChildren: 1.0 } },
-            }}
+            variants={fadeUp}
           >
-            {socialIcons.map(({ icon: Icon, href, label }) => (
-              <motion.a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                variants={{
-                  hidden: { opacity: 0, scale: 0.5 },
-                  visible: {
-                    opacity: 1,
-                    scale: 1,
-                    transition: { type: 'spring' as const, stiffness: 400, damping: 15 },
-                  },
-                }}
-                aria-label={label}
-              >
-                <Icon className="h-4 w-4" />
-              </motion.a>
-            ))}
+            <div className="flex items-center gap-2.5">
+              {socialLinks.map(({ icon: Icon, href, label }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground hover:scale-110"
+                  aria-label={label}
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
+
+            <span className="h-5 w-px bg-border" />
+
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+              <MapPin className="h-3 w-3" />
+              <span>China</span>
+            </div>
           </motion.div>
         </div>
 
-        {/* Right — avatar + nickname */}
+        {/* Right — avatar card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring' as const, stiffness: 200, damping: 20, delay: 0.2 }}
-          className="flex flex-col items-center gap-4 flex-shrink-0"
+          className="flex flex-col items-center gap-5 flex-shrink-0"
         >
+          {/* Avatar with glow */}
           <div className="relative group">
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/30 via-accent/30 to-primary/10 blur-md opacity-60 group-hover:opacity-80 transition-opacity" />
-            <div className="relative h-36 w-36 rounded-full ring-2 ring-border/40 sm:h-44 sm:w-44 md:h-48 md:w-48 flex items-center justify-center overflow-hidden bg-muted">
+            <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-primary/20 via-accent/30 to-primary/10 blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500" />
+            <div className="relative h-40 w-40 rounded-full ring-[3px] ring-border/30 sm:h-48 sm:w-48 md:h-52 md:w-52 overflow-hidden bg-muted shadow-lg shadow-primary/5">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={nickname || 'Avatar'}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
-                <span className="text-5xl sm:text-6xl md:text-7xl select-none">👤</span>
+                <span className="flex h-full w-full items-center justify-center text-5xl sm:text-6xl md:text-7xl select-none">👤</span>
               )}
             </div>
           </div>
 
+          {/* Nickname + role badge */}
           {nickname && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, type: 'spring' as const, stiffness: 200, damping: 20 }}
-              className="text-base font-medium text-muted-foreground tracking-wide"
+              className="flex flex-col items-center gap-1.5"
             >
-              {nickname}
-            </motion.p>
+              <span className="text-lg font-serif font-semibold tracking-wide">
+                {nickname}
+              </span>
+              <span className="text-[11px] tracking-widest uppercase text-muted-foreground/50 font-medium">
+                Blog Owner
+              </span>
+            </motion.div>
           )}
         </motion.div>
       </div>
@@ -174,7 +202,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.4, duration: 0.6 }}
-            className="max-w-md px-6 text-center text-sm text-muted-foreground/70 italic"
+            className="max-w-md px-6 text-center text-sm text-muted-foreground/60 italic font-serif"
           >
             「{hitokoto}」
           </motion.p>
@@ -184,7 +212,7 @@ export function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.6 }}
-          className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
           aria-label="向下滚动"
         >
           <motion.div

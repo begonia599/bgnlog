@@ -106,7 +106,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	// Auto-sync admin's avatar and nickname to hero settings on every page load
+	// Auto-sync admin's avatar, nickname and bio to hero settings on every page load
 	if me.User.Role == "admin" {
 		pairs := map[string]string{}
 		if me.Profile.AvatarURL != "" {
@@ -114,6 +114,9 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		}
 		if me.Profile.Nickname != "" {
 			pairs["hero_nickname"] = me.Profile.Nickname
+		}
+		if me.Profile.Bio != "" {
+			pairs["hero_bio"] = me.Profile.Bio
 		}
 		if len(pairs) > 0 {
 			_ = h.settings.SetMultiple(pairs)
