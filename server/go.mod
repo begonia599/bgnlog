@@ -3,7 +3,7 @@ module blog-server
 go 1.25.3
 
 require (
-	github.com/begonia599/myplatform v0.4.1
+	github.com/begonia599/myplatform v0.4.2
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.12.0
 	github.com/spf13/viper v1.21.0
