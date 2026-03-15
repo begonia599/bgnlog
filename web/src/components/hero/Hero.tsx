@@ -123,7 +123,11 @@ export function Hero() {
           className="flex-shrink-0"
         >
           <div className="h-36 w-36 rounded-full bg-gradient-to-br from-primary/10 to-accent ring-2 ring-border/50 sm:h-44 sm:w-44 md:h-52 md:w-52 flex items-center justify-center overflow-hidden">
-            <span className="text-5xl sm:text-6xl md:text-7xl select-none">👤</span>
+            <img
+              src="https://core.bgnhub.me/api/imagebed/1"
+              alt="Begonia Sinclair"
+              className="h-full w-full object-cover"
+            />
           </div>
         </motion.div>
       </div>
