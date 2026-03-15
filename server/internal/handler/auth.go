@@ -105,6 +105,12 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		forwardPlatformError(c, err)
 		return
 	}
+
+	// Auto-sync admin's avatar to hero settings on every page load
+	if me.User.Role == "admin" && me.Profile.AvatarURL != "" {
+		_ = h.settings.SetMultiple(map[string]string{"hero_avatar_url": me.Profile.AvatarURL})
+	}
+
 	pkg.Success(c, me)
 }
 
