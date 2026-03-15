@@ -55,42 +55,66 @@ export function DiscordPresence({ userId }: { userId: string }) {
   useEffect(() => {
     if (!userId) return
 
-    // Initial fetch
-    fetch(`https://api.lanyard.rest/v1/users/${userId}`)
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success) setData(res.data)
-      })
-      .catch(() => {})
+    let cancelled = false
 
-    // WebSocket for real-time updates
-    const ws = new WebSocket('wss://api.lanyard.rest/socket')
-    let heartbeatInterval: ReturnType<typeof setInterval>
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data)
-
-      if (msg.op === 1) {
-        // Hello — send init + start heartbeat
-        ws.send(JSON.stringify({
-          op: 2,
-          d: { subscribe_to_id: userId },
-        }))
-        heartbeatInterval = setInterval(() => {
-          ws.send(JSON.stringify({ op: 3 }))
-        }, msg.d.heartbeat_interval)
-      }
-
-      if (msg.op === 0 && msg.d) {
-        setData(msg.d)
-      }
+    // REST polling as reliable fallback (every 30s)
+    const fetchPresence = () => {
+      fetch(`https://api.lanyard.rest/v1/users/${userId}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (!cancelled && res.success) setData(res.data)
+        })
+        .catch(() => {})
     }
 
-    ws.onerror = () => ws.close()
+    fetchPresence()
+    const pollInterval = setInterval(fetchPresence, 30_000)
+
+    // WebSocket for instant updates (with auto-reconnect)
+    let ws: WebSocket | null = null
+    let heartbeatInterval: ReturnType<typeof setInterval>
+    let reconnectTimeout: ReturnType<typeof setTimeout>
+
+    const connect = () => {
+      if (cancelled) return
+      try {
+        ws = new WebSocket('wss://api.lanyard.rest/socket')
+      } catch {
+        return // WebSocket blocked, polling will handle it
+      }
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data)
+        if (msg.op === 1) {
+          ws?.send(JSON.stringify({ op: 2, d: { subscribe_to_id: userId } }))
+          clearInterval(heartbeatInterval)
+          heartbeatInterval = setInterval(() => {
+            ws?.send(JSON.stringify({ op: 3 }))
+          }, msg.d.heartbeat_interval)
+        }
+        if (msg.op === 0 && msg.d) {
+          setData(msg.d)
+        }
+      }
+
+      ws.onclose = () => {
+        clearInterval(heartbeatInterval)
+        if (!cancelled) {
+          reconnectTimeout = setTimeout(connect, 5_000)
+        }
+      }
+
+      ws.onerror = () => ws?.close()
+    }
+
+    connect()
 
     return () => {
+      cancelled = true
+      clearInterval(pollInterval)
       clearInterval(heartbeatInterval)
-      ws.close()
+      clearTimeout(reconnectTimeout)
+      ws?.close()
     }
   }, [userId])
 
