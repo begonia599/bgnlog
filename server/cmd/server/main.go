@@ -69,7 +69,7 @@ func main() {
 	}
 
 	// Handlers
-	authHandler := handler.NewAuthHandler(plat, platformPublicURL)
+	authHandler := handler.NewAuthHandler(plat, platformPublicURL, settingRepo)
 	articleHandler := handler.NewArticleHandler(articleSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	tagHandler := handler.NewTagHandler(tagSvc)

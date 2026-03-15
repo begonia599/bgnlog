@@ -2,10 +2,12 @@ package handler
 
 import (
 	"blog-server/internal/pkg"
+	"blog-server/internal/repository"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/begonia599/myplatform/sdk"
@@ -15,10 +17,11 @@ import (
 type AuthHandler struct {
 	plat      *sdk.Client
 	publicURL string // platform public URL for image serving
+	settings  *repository.SettingRepository
 }
 
-func NewAuthHandler(plat *sdk.Client, platformPublicURL string) *AuthHandler {
-	return &AuthHandler{plat: plat, publicURL: platformPublicURL}
+func NewAuthHandler(plat *sdk.Client, platformPublicURL string, settings *repository.SettingRepository) *AuthHandler {
+	return &AuthHandler{plat: plat, publicURL: platformPublicURL, settings: settings}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -132,6 +135,17 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		forwardPlatformError(c, err)
 		return
 	}
+
+	// Auto-sync avatar to hero settings when admin updates avatar
+	if req.AvatarURL != nil && *req.AvatarURL != "" {
+		role, _ := c.Get("role")
+		if role == "admin" {
+			if err := h.settings.SetMultiple(map[string]string{"hero_avatar_url": *req.AvatarURL}); err != nil {
+				log.Printf("Warning: failed to sync hero avatar: %v", err)
+			}
+		}
+	}
+
 	pkg.Success(c, profile)
 }
 
