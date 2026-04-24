@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  fetchUser: () => Promise<void>
   isAdmin: boolean
   isEditor: boolean
 }
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        fetchUser,
         isAdmin: user?.role === 'admin',
         isEditor: user?.role === 'editor' || user?.role === 'admin',
       }}

@@ -62,6 +62,21 @@ export interface UserProfile {
   updated_at: string
 }
 
+export interface OAuthAccount {
+  id: number
+  provider: string
+  provider_user_id: string
+  email: string
+  avatar_url: string
+  created_at: string
+  updated_at: string
+}
+
+export interface OAuthAccountsData {
+  accounts: OAuthAccount[]
+  has_password: boolean
+}
+
 export interface AuthTokens {
   access_token: string
   refresh_token: string

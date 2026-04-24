@@ -45,6 +45,11 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		authGroup.GET("/profile", auth.AuthRequired(), h.Auth.GetProfile)
 		authGroup.PUT("/profile", auth.AuthRequired(), h.Auth.UpdateProfile)
 		authGroup.POST("/avatar", auth.AuthRequired(), h.Auth.UploadAvatar)
+		authGroup.PUT("/password", auth.AuthRequired(), h.Auth.ChangePassword)
+		authGroup.GET("/oauth/accounts", auth.AuthRequired(), h.Auth.GetOAuthAccounts)
+		authGroup.DELETE("/oauth/accounts/:provider", auth.AuthRequired(), h.Auth.UnlinkOAuth)
+		authGroup.GET("/oauth/:provider", h.Auth.OAuthAuthorize)
+		authGroup.POST("/oauth/exchange", h.Auth.OAuthExchange)
 	}
 
 	api := r.Group("/api")

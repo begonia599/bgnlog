@@ -18,6 +18,7 @@ import TimelinePage from '@/pages/TimelinePage'
 import ThinkingPage from '@/pages/ThinkingPage'
 import FriendsPage from '@/pages/FriendsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import OAuthCallbackPage from '@/pages/OAuthCallbackPage'
 import type { ReactNode } from 'react'
 
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[] }) {
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/article/:slug" element={<ArticlePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/archives" element={<ArchivesPage />} />

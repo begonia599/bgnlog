@@ -206,3 +206,81 @@ func forwardPlatformError(c *gin.Context, err error) {
 	pkg.Error(c, http.StatusBadGateway, err.Error())
 }
 
+func (h *AuthHandler) OAuthAuthorize(c *gin.Context) {
+	provider := c.Param("provider")
+	redirectURI := c.Query("redirect_uri")
+	if redirectURI == "" {
+		pkg.Error(c, http.StatusBadRequest, "redirect_uri is required")
+		return
+	}
+
+	resp, err := h.plat.Auth.OAuthAuthorize(provider, redirectURI)
+	if err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+	pkg.Success(c, resp)
+}
+
+func (h *AuthHandler) OAuthExchange(c *gin.Context) {
+	var req struct {
+		ExchangeCode string `json:"exchange_code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.ExchangeCode == "" {
+		pkg.Error(c, http.StatusBadRequest, "exchange_code is required")
+		return
+	}
+
+	tokens, err := h.plat.Auth.OAuthExchange(req.ExchangeCode)
+	if err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+	pkg.Success(c, tokens)
+}
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req struct {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkg.Error(c, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	token, _ := c.Get("token")
+	client := h.plat.WithToken(token.(string))
+
+	if err := client.Auth.ChangePassword(req.OldPassword, req.NewPassword); err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+	pkg.Success(c, gin.H{"message": "password updated"})
+}
+
+func (h *AuthHandler) GetOAuthAccounts(c *gin.Context) {
+	token, _ := c.Get("token")
+	client := h.plat.WithToken(token.(string))
+
+	accounts, err := client.Auth.GetOAuthAccounts()
+	if err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+	pkg.Success(c, accounts)
+}
+
+func (h *AuthHandler) UnlinkOAuth(c *gin.Context) {
+	provider := c.Param("provider")
+
+	token, _ := c.Get("token")
+	client := h.plat.WithToken(token.(string))
+
+	if err := client.Auth.UnlinkOAuth(provider); err != nil {
+		forwardPlatformError(c, err)
+		return
+	}
+	pkg.Success(c, gin.H{"message": "oauth account unlinked"})
+}
+

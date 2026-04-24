@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile } from '@/types'
+import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData } from '@/types'
 
 // Auth
 export const authApi = {
@@ -17,6 +17,19 @@ export const authApi = {
     form.append('avatar', file)
     return api.post<ApiResponse<{ url: string }>>('/auth/avatar', form)
   },
+  changePassword: (oldPassword: string, newPassword: string) =>
+    api.put<ApiResponse<{ message: string }>>('/auth/password', {
+      old_password: oldPassword || undefined,
+      new_password: newPassword,
+    }),
+  getOAuthAccounts: () =>
+    api.get<ApiResponse<OAuthAccountsData>>('/auth/oauth/accounts'),
+  unlinkOAuth: (provider: string) =>
+    api.delete<ApiResponse<{ message: string }>>(`/auth/oauth/accounts/${provider}`),
+  oauthAuthorize: (provider: string, redirectUri: string) =>
+    api.get<ApiResponse<{ auth_url: string }>>(`/auth/oauth/${provider}`, { params: { redirect_uri: redirectUri } }),
+  oauthExchange: (exchangeCode: string) =>
+    api.post<ApiResponse<AuthTokens>>('/auth/oauth/exchange', { exchange_code: exchangeCode }),
 }
 
 // Articles
