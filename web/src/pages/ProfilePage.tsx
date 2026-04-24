@@ -494,7 +494,8 @@ function LinkedAccountsTab() {
 
   const handleLink = async (provider: string) => {
     try {
-      const res = await authApi.oauthAuthorize(provider)
+      const redirectUri = `${window.location.origin}/oauth/callback`
+      const res = await authApi.oauthAuthorize(provider, redirectUri)
       window.location.href = res.data.data.auth_url
     } catch {
       setFeedback({ msg: '无法连接到第三方服务', type: 'error' })
