@@ -503,7 +503,7 @@ function LinkedAccountsTab() {
   }
 
   // All possible providers
-  const allProviders = ['github']
+  const allProviders = ['github', 'discord']
   const linkedProviders = new Set(accounts.map((a) => a.provider))
 
   if (loading) {
