@@ -28,8 +28,19 @@ export const authApi = {
     api.delete<ApiResponse<{ message: string }>>(`/auth/oauth/accounts/${provider}`),
   oauthAuthorize: (provider: string, redirectUri: string) =>
     api.get<ApiResponse<{ auth_url: string }>>(`/auth/oauth/${provider}`, { params: { redirect_uri: redirectUri } }),
+  oauthBindAuthorize: (provider: string, redirectUri: string) =>
+    api.get<ApiResponse<{ auth_url: string }>>(`/auth/oauth/${provider}/bind`, { params: { redirect_uri: redirectUri } }),
   oauthExchange: (exchangeCode: string) =>
     api.post<ApiResponse<AuthTokens>>('/auth/oauth/exchange', { exchange_code: exchangeCode }),
+  linkExisting: (username: string, password: string) =>
+    api.post<ApiResponse<{
+      message: string
+      primary_id: number
+      secondary_id: number
+      tokens: AuthTokens
+      user: { id: number; username: string; role: string }
+      migration_error?: string
+    }>>('/auth/oauth/link-existing', { username, password }),
 }
 
 // Articles

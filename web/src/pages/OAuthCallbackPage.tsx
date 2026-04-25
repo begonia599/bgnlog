@@ -12,9 +12,17 @@ export default function OAuthCallbackPage() {
   useEffect(() => {
     const exchangeCode = searchParams.get('exchange_code')
     const oauthError = searchParams.get('error')
+    const bindResult = searchParams.get('bind_result')
+
+    // Bind flow — stash result for ProfilePage to show, then redirect there.
+    if (bindResult) {
+      sessionStorage.setItem('oauth_bind_result', bindResult)
+      navigate('/profile?tab=linked', { replace: true })
+      return
+    }
 
     if (oauthError) {
-      setError('GitHub 登录失败，请重试')
+      setError('第三方登录失败，请重试')
       return
     }
 
@@ -34,7 +42,7 @@ export default function OAuthCallbackPage() {
         navigate('/', { replace: true })
       })
       .catch(() => {
-        setError('GitHub 登录失败，请重试')
+        setError('第三方登录失败，请重试')
       })
   }, [searchParams, navigate, fetchUser])
 
