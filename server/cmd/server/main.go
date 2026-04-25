@@ -69,7 +69,7 @@ func main() {
 	}
 
 	// Handlers
-	authHandler := handler.NewAuthHandler(plat, platformPublicURL, settingRepo)
+	authHandler := handler.NewAuthHandler(plat, platformPublicURL, settingRepo, db)
 	articleHandler := handler.NewArticleHandler(articleSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	tagHandler := handler.NewTagHandler(tagSvc)
@@ -119,4 +119,3 @@ func registerBlogPermissions(plat *sdk.Client) {
 		log.Println("Blog permissions registered with platform")
 	}
 }
-

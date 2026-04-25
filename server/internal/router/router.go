@@ -48,7 +48,9 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		authGroup.PUT("/password", auth.AuthRequired(), h.Auth.ChangePassword)
 		authGroup.GET("/oauth/accounts", auth.AuthRequired(), h.Auth.GetOAuthAccounts)
 		authGroup.DELETE("/oauth/accounts/:provider", auth.AuthRequired(), h.Auth.UnlinkOAuth)
+		authGroup.POST("/oauth/link-existing", auth.AuthRequired(), h.Auth.LinkExisting)
 		authGroup.GET("/oauth/:provider", h.Auth.OAuthAuthorize)
+		authGroup.GET("/oauth/:provider/bind", auth.AuthRequired(), h.Auth.OAuthBindAuthorize)
 		authGroup.POST("/oauth/exchange", h.Auth.OAuthExchange)
 	}
 
@@ -112,4 +114,3 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		r.StaticFile("/favicon.ico", filepath.Join(staticDir, "favicon.ico"))
 	}
 }
-
