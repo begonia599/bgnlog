@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Shield, Lock, Globe, AlertCircle, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, Shield, Lock, Globe, AlertCircle, ExternalLink, Loader2, Plus, MessageSquare, Pin, EyeOff, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { zoneApi } from '@/api'
+import { zoneApi, zonePostApi } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import type { Zone, ZoneAccessDecision } from '@/types'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import type { Zone, ZoneAccessDecision, ZonePost } from '@/types'
 
 export default function ZoneDetailPage() {
     const { slug } = useParams<{ slug: string }>()
@@ -133,21 +136,168 @@ export default function ZoneDetailPage() {
                 />
             )}
 
-            {/* zone content — placeholder for now */}
+            {/* zone community */}
             {isAllowed && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">欢迎进入 {zone.name}</CardTitle>
-                        <CardDescription>此专区的内容功能正在建设中</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            后续将在此展示专区的专属内容、讨论和资源。
-                        </p>
-                    </CardContent>
-                </Card>
+                <ZonePostList slug={slug!} />
             )}
         </motion.div>
+    )
+}
+
+// ── zone post list + create ──
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    open: { label: '待处理', color: 'bg-blue-500/10 text-blue-600' },
+    resolved: { label: '已解决', color: 'bg-green-500/10 text-green-600' },
+    closed: { label: '已关闭', color: 'bg-muted text-muted-foreground' },
+}
+
+function ZonePostList({ slug }: { slug: string }) {
+    const navigate = useNavigate()
+    const { isAdmin } = useAuth()
+    const [posts, setPosts] = useState<ZonePost[]>([])
+    const [total, setTotal] = useState(0)
+    const [page, setPage] = useState(1)
+    const [loading, setLoading] = useState(true)
+    const [showCreate, setShowCreate] = useState(false)
+
+    const fetchPosts = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await zonePostApi.listPosts(slug, page)
+            setPosts(res.data.data.posts ?? [])
+            setTotal(res.data.data.total)
+        } catch { /* */ }
+        finally { setLoading(false) }
+    }, [slug, page])
+
+    useEffect(() => { fetchPosts() }, [fetchPosts])
+
+    const totalPages = Math.ceil(total / 20)
+
+    return (
+        <div className="space-y-4">
+            {/* header */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                    讨论 <span className="text-muted-foreground/50">({total})</span>
+                </h2>
+                <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setShowCreate(v => !v)}>
+                    <Plus className="h-3.5 w-3.5" /> 发帖
+                </Button>
+            </div>
+
+            {/* create form */}
+            {showCreate && (
+                <CreatePostForm slug={slug} onCreated={() => { setShowCreate(false); setPage(1); fetchPosts() }} onCancel={() => setShowCreate(false)} />
+            )}
+
+            {/* post list */}
+            {loading ? (
+                <div className="py-10 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></div>
+            ) : posts.length === 0 ? (
+                <div className="py-16 text-center">
+                    <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
+                    <p className="text-sm text-muted-foreground/50">暂无帖子，成为第一个发帖的人吧</p>
+                </div>
+            ) : (
+                <div className="space-y-1">
+                    {posts.map(post => (
+                        <div
+                            key={post.id}
+                            className="group flex items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-secondary/40 cursor-pointer"
+                            onClick={() => navigate(`/zone/${slug}/post/${post.id}`)}
+                        >
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    {post.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
+                                    <span className="text-sm font-medium truncate">{post.title}</span>
+                                    <Badge className={`text-[10px] px-1.5 py-0 h-4 shrink-0 ${STATUS_LABELS[post.status]?.color || ''}`}>
+                                        {STATUS_LABELS[post.status]?.label || post.status}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+                                    <span className="flex items-center gap-1">
+                                        {post.is_anonymous && <EyeOff className="h-3 w-3" />}
+                                        {post.author_name}
+                                    </span>
+                                    <span>·</span>
+                                    <span>{new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
+                                    {post.comment_count > 0 && (
+                                        <>
+                                            <span>·</span>
+                                            <span className="flex items-center gap-0.5">
+                                                <MessageSquare className="h-3 w-3" />
+                                                {post.comment_count}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/20 shrink-0 self-center transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                    <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 text-xs">上一页</Button>
+                    <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
+                    <Button size="sm" variant="ghost" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 text-xs">下一页</Button>
+                </div>
+            )}
+        </div>
+    )
+}
+
+function CreatePostForm({ slug, onCreated, onCancel }: { slug: string; onCreated: () => void; onCancel: () => void }) {
+    const [title, setTitle] = useState('')
+    const [content, setContent] = useState('')
+    const [anonymous, setAnonymous] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+    const [error, setError] = useState('')
+
+    const handleSubmit = async () => {
+        if (!title.trim() || !content.trim()) { setError('标题和内容不能为空'); return }
+        setSubmitting(true)
+        try {
+            await zonePostApi.createPost(slug, { title: title.trim(), content: content.trim(), is_anonymous: anonymous })
+            onCreated()
+        } catch (e: any) {
+            setError(e?.response?.data?.message || '发帖失败')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    return (
+        <Card>
+            <CardContent className="pt-5 space-y-3">
+                <div className="grid gap-1.5">
+                    <Label className="text-xs">标题</Label>
+                    <Input placeholder="简要描述你的问题或反馈" value={title} onChange={e => setTitle(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="grid gap-1.5">
+                    <Label className="text-xs">内容</Label>
+                    <Textarea placeholder="详细描述…" value={content} onChange={e => setContent(e.target.value)} rows={4} className="text-sm resize-none" />
+                </div>
+                <div className="flex items-center gap-2">
+                    <input type="checkbox" id="anon-post" checked={anonymous} onChange={e => setAnonymous(e.target.checked)} className="h-3.5 w-3.5 rounded border-border" />
+                    <label htmlFor="anon-post" className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
+                        <EyeOff className="h-3 w-3" /> 匿名发布
+                    </label>
+                </div>
+                {error && <p className="text-xs text-destructive">{error}</p>}
+                <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={onCancel} className="h-7 text-xs">取消</Button>
+                    <Button size="sm" onClick={handleSubmit} disabled={submitting} className="h-7 text-xs">
+                        {submitting ? '发布中…' : '发布'}
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
     )
 }
 

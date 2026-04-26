@@ -33,7 +33,7 @@ func main() {
 
 	// Auto-migrate tables owned by this binary (catalog tables managed by
 	// migrations live in /migrations).
-	if err := db.AutoMigrate(&model.SiteSetting{}, &model.Zone{}, &model.ZoneRule{}); err != nil {
+	if err := db.AutoMigrate(&model.SiteSetting{}, &model.Zone{}, &model.ZoneRule{}, &model.ZonePost{}, &model.ZoneComment{}); err != nil {
 		log.Fatalf("Failed to migrate auxiliary tables: %v", err)
 	}
 
@@ -57,6 +57,7 @@ func main() {
 	commentRepo := repository.NewCommentRepository(db)
 	settingRepo := repository.NewSettingRepository(db)
 	zoneRepo := repository.NewZoneRepository(db)
+	zonePostRepo := repository.NewZonePostRepository(db)
 
 	// Services
 	articleSvc := service.NewArticleService(articleRepo, tagRepo)
@@ -65,6 +66,7 @@ func main() {
 	commentSvc := service.NewCommentService(commentRepo, articleRepo)
 	settingSvc := service.NewSettingService(settingRepo)
 	zoneSvc := service.NewZoneService(zoneRepo, plat)
+	zonePostSvc := service.NewZonePostService(zonePostRepo, zoneRepo)
 
 	platformPublicURL := cfg.Platform.PublicURL
 	if platformPublicURL == "" {
@@ -80,6 +82,7 @@ func main() {
 	uploadHandler := handler.NewUploadHandler(plat, adminPlat)
 	settingHandler := handler.NewSettingHandler(settingSvc)
 	zoneHandler := handler.NewZoneHandler(zoneSvc)
+	zonePostHandler := handler.NewZonePostHandler(zonePostSvc, zoneSvc)
 
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(plat)
@@ -100,6 +103,7 @@ func main() {
 		Upload:   uploadHandler,
 		Setting:  settingHandler,
 		Zone:     zoneHandler,
+		ZonePost: zonePostHandler,
 	}, authMiddleware, plat, cfg)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

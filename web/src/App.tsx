@@ -17,6 +17,7 @@ import NotesPage from '@/pages/NotesPage'
 import TimelinePage from '@/pages/TimelinePage'
 import ZonePage from '@/pages/ZonePage'
 import ZoneDetailPage from '@/pages/ZoneDetailPage'
+import ZonePostDetailPage from '@/pages/ZonePostDetailPage'
 import FriendsPage from '@/pages/FriendsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import OAuthCallbackPage from '@/pages/OAuthCallbackPage'
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/zone" element={<ZonePage />} />
         <Route path="/zone/:slug" element={<ZoneDetailPage />} />
+        <Route path="/zone/:slug/post/:postId" element={<ZonePostDetailPage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/article/:slug" element={<ArticlePage />} />
         <Route path="/login" element={<LoginPage />} />

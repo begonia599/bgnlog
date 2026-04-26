@@ -149,3 +149,40 @@ export interface ZoneAccessDecision {
   missing_scopes?: string[]
   evaluated_at: string
 }
+
+// --- Zone Posts & Comments ---
+
+export interface ZonePost {
+  id: number
+  zone_id: number
+  title: string
+  content: string
+  is_anonymous: boolean
+  is_pinned: boolean
+  status: 'open' | 'closed' | 'resolved'
+  comment_count: number
+  author_name: string
+  author_avatar: string
+  is_owner: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ZonePostListResult {
+  posts: ZonePost[]
+  total: number
+  page: number
+  size: number
+}
+
+export interface ZoneComment {
+  id: number
+  post_id: number
+  parent_id?: number
+  content: string
+  is_anonymous: boolean
+  author_name: string
+  author_avatar: string
+  is_owner: boolean
+  created_at: string
+}

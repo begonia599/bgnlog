@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision } from '@/types'
+import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision, ZonePost, ZonePostListResult, ZoneComment } from '@/types'
 
 // Auth
 export const authApi = {
@@ -132,6 +132,28 @@ export const zoneApi = {
     api.delete(`/api/zones/${zoneId}/rules/${ruleId}`),
   requestReauth: (redirectUri: string) =>
     api.get<ApiResponse<{ auth_url: string }>>(`/api/zones/reauth?redirect_uri=${encodeURIComponent(redirectUri)}`),
+}
+
+// Zone Posts & Comments
+export const zonePostApi = {
+  listPosts: (slug: string, page = 1, size = 20) =>
+    api.get<ApiResponse<ZonePostListResult>>(`/api/zones/${slug}/posts?page=${page}&size=${size}`),
+  getPost: (slug: string, postId: number) =>
+    api.get<ApiResponse<ZonePost>>(`/api/zones/${slug}/posts/${postId}`),
+  createPost: (slug: string, data: { title: string; content: string; is_anonymous?: boolean }) =>
+    api.post<ApiResponse<ZonePost>>(`/api/zones/${slug}/posts`, data),
+  updateStatus: (slug: string, postId: number, status: string) =>
+    api.put(`/api/zones/${slug}/posts/${postId}/status`, { status }),
+  togglePin: (slug: string, postId: number, pinned: boolean) =>
+    api.put(`/api/zones/${slug}/posts/${postId}/pin`, { pinned }),
+  deletePost: (slug: string, postId: number) =>
+    api.delete(`/api/zones/${slug}/posts/${postId}`),
+  listComments: (slug: string, postId: number) =>
+    api.get<ApiResponse<ZoneComment[]>>(`/api/zones/${slug}/posts/${postId}/comments`),
+  createComment: (slug: string, postId: number, data: { content: string; parent_id?: number; is_anonymous?: boolean }) =>
+    api.post<ApiResponse<ZoneComment>>(`/api/zones/${slug}/posts/${postId}/comments`, data),
+  deleteComment: (slug: string, postId: number, commentId: number) =>
+    api.delete(`/api/zones/${slug}/posts/${postId}/comments/${commentId}`),
 }
 
 export const settingsApi = {

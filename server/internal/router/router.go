@@ -22,6 +22,7 @@ type Handlers struct {
 	Upload   *handler.UploadHandler
 	Setting  *handler.SettingHandler
 	Zone     *handler.ZoneHandler
+	ZonePost *handler.ZonePostHandler
 }
 
 func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk.Client, cfg *config.Config) {
@@ -105,6 +106,17 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		api.DELETE("/zones/:id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "delete"), h.Zone.Delete)
 		api.POST("/zones/:id/rules", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.Zone.AddRule)
 		api.DELETE("/zones/:id/rules/:rule_id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.Zone.DeleteRule)
+
+		// Zone posts & comments — require auth; access check inside handler.
+		api.GET("/zones/:slug/posts", auth.AuthRequired(), h.ZonePost.ListPosts)
+		api.POST("/zones/:slug/posts", auth.AuthRequired(), h.ZonePost.CreatePost)
+		api.GET("/zones/:slug/posts/:post_id", auth.AuthRequired(), h.ZonePost.GetPost)
+		api.PUT("/zones/:slug/posts/:post_id/status", auth.AuthRequired(), h.ZonePost.UpdatePostStatus)
+		api.PUT("/zones/:slug/posts/:post_id/pin", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.ZonePost.TogglePin)
+		api.DELETE("/zones/:slug/posts/:post_id", auth.AuthRequired(), h.ZonePost.DeletePost)
+		api.GET("/zones/:slug/posts/:post_id/comments", auth.AuthRequired(), h.ZonePost.ListComments)
+		api.POST("/zones/:slug/posts/:post_id/comments", auth.AuthRequired(), h.ZonePost.CreateComment)
+		api.DELETE("/zones/:slug/posts/:post_id/comments/:comment_id", auth.AuthRequired(), h.ZonePost.DeleteComment)
 	}
 
 	// In release mode, serve static frontend files
