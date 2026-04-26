@@ -14,8 +14,14 @@ export default function OAuthCallbackPage() {
     const oauthError = searchParams.get('error')
     const bindResult = searchParams.get('bind_result')
 
-    // Bind flow — stash result for ProfilePage to show, then redirect there.
+    // Bind flow — stash result for ProfilePage to show, then redirect.
     if (bindResult) {
+      const zoneSlug = searchParams.get('zone_slug')
+      if (zoneSlug) {
+        // Came from zone reauth — go back to the zone detail page.
+        navigate(`/zone/${zoneSlug}`, { replace: true })
+        return
+      }
       sessionStorage.setItem('oauth_bind_result', bindResult)
       navigate('/profile?tab=linked', { replace: true })
       return

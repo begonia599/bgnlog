@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData } from '@/types'
+import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision } from '@/types'
 
 // Auth
 export const authApi = {
@@ -112,6 +112,26 @@ export interface HeroSettings {
   hero_nickname: string
   hero_bio: string
   discord_user_id: string
+}
+
+// Zones
+export const zoneApi = {
+  list: () => api.get<ApiResponse<Zone[]>>('/api/zones'),
+  getBySlug: (slug: string) => api.get<ApiResponse<Zone>>(`/api/zones/${slug}`),
+  checkAccess: (slug: string) => api.get<ApiResponse<ZoneAccessDecision>>(`/api/zones/${slug}/access`),
+  // admin
+  listAdmin: () => api.get<ApiResponse<Zone[]>>('/api/admin/zones'),
+  create: (data: { slug: string; name: string; description?: string; cover_image_url?: string; visibility?: string; sort_order?: number }) =>
+    api.post<ApiResponse<Zone>>('/api/zones', data),
+  update: (id: number, data: { name?: string; description?: string; cover_image_url?: string; visibility?: string; sort_order?: number }) =>
+    api.put<ApiResponse<Zone>>(`/api/zones/${id}`, data),
+  delete: (id: number) => api.delete(`/api/zones/${id}`),
+  addRule: (zoneId: number, data: { kind: string; guild_id?: string; role_id?: string; label?: string }) =>
+    api.post<ApiResponse<ZoneRule>>(`/api/zones/${zoneId}/rules`, data),
+  deleteRule: (zoneId: number, ruleId: number) =>
+    api.delete(`/api/zones/${zoneId}/rules/${ruleId}`),
+  requestReauth: (redirectUri: string) =>
+    api.get<ApiResponse<{ auth_url: string }>>(`/api/zones/reauth?redirect_uri=${encodeURIComponent(redirectUri)}`),
 }
 
 export const settingsApi = {

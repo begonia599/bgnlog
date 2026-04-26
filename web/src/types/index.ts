@@ -103,3 +103,37 @@ export interface ArchiveItem {
   month: number
   count: number
 }
+
+// --- Zone ---
+
+export interface ZoneRule {
+  id: number
+  zone_id: number
+  kind: 'discord_guild_member' | 'discord_guild_role'
+  guild_id?: string
+  role_id?: string
+  label?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Zone {
+  id: number
+  slug: string
+  name: string
+  description: string
+  cover_image_url: string
+  owner_id: number
+  visibility: 'public' | 'gated'
+  sort_order: number
+  rules?: ZoneRule[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ZoneAccessDecision {
+  status: 'allowed' | 'denied' | 'need_link' | 'need_reauth' | 'error'
+  reason?: string
+  missing_scopes?: string[]
+  evaluated_at: string
+}

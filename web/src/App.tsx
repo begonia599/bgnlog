@@ -15,7 +15,8 @@ import AdminPage from '@/pages/AdminPage'
 import ProfilePage from '@/pages/ProfilePage'
 import NotesPage from '@/pages/NotesPage'
 import TimelinePage from '@/pages/TimelinePage'
-import ThinkingPage from '@/pages/ThinkingPage'
+import ZonePage from '@/pages/ZonePage'
+import ZoneDetailPage from '@/pages/ZoneDetailPage'
 import FriendsPage from '@/pages/FriendsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import OAuthCallbackPage from '@/pages/OAuthCallbackPage'
@@ -43,7 +44,8 @@ function AppRoutes() {
         <Route path="/posts" element={<PostsPage />} />
         <Route path="/notes" element={<NotesPage />} />
         <Route path="/timeline" element={<TimelinePage />} />
-        <Route path="/thinking" element={<ThinkingPage />} />
+        <Route path="/zone" element={<ZonePage />} />
+        <Route path="/zone/:slug" element={<ZoneDetailPage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/article/:slug" element={<ArticlePage />} />
         <Route path="/login" element={<LoginPage />} />

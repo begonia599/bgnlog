@@ -21,6 +21,7 @@ type Handlers struct {
 	Comment  *handler.CommentHandler
 	Upload   *handler.UploadHandler
 	Setting  *handler.SettingHandler
+	Zone     *handler.ZoneHandler
 }
 
 func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk.Client, cfg *config.Config) {
@@ -92,6 +93,18 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		// Site settings
 		api.GET("/settings/hero", h.Setting.GetHero)
 		api.PUT("/settings/hero", auth.AuthRequired(), middleware.RequireRole("admin"), h.Setting.UpdateHero)
+
+		// Zones — public listing + per-user access check, plus admin CRUD.
+		api.GET("/zones", h.Zone.List)
+		api.GET("/zones/reauth", auth.AuthRequired(), h.Zone.RequestReauth)
+		api.GET("/zones/:slug", h.Zone.GetBySlug)
+		api.GET("/zones/:slug/access", auth.AuthRequired(), h.Zone.CheckAccess)
+		api.GET("/admin/zones", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "read"), h.Zone.ListAdmin)
+		api.POST("/zones", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "create"), h.Zone.Create)
+		api.PUT("/zones/:id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.Zone.Update)
+		api.DELETE("/zones/:id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "delete"), h.Zone.Delete)
+		api.POST("/zones/:id/rules", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.Zone.AddRule)
+		api.DELETE("/zones/:id/rules/:rule_id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.zone", "update"), h.Zone.DeleteRule)
 	}
 
 	// In release mode, serve static frontend files

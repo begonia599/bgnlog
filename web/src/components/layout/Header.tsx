@@ -21,7 +21,7 @@ const navItems = [
   { label: '文稿', path: '/posts' },
   { label: '手记', path: '/notes' },
   { label: '时光', path: '/timeline' },
-  { label: '思考', path: '/thinking' },
+  { label: '专区', path: '/zone' },
 ]
 
 const moreItems = [

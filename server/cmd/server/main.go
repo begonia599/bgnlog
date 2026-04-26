@@ -31,9 +31,10 @@ func main() {
 	}
 	log.Println("Database connected")
 
-	// Auto-migrate site settings table
-	if err := db.AutoMigrate(&model.SiteSetting{}); err != nil {
-		log.Fatalf("Failed to migrate site_settings: %v", err)
+	// Auto-migrate tables owned by this binary (catalog tables managed by
+	// migrations live in /migrations).
+	if err := db.AutoMigrate(&model.SiteSetting{}, &model.Zone{}, &model.ZoneRule{}); err != nil {
+		log.Fatalf("Failed to migrate auxiliary tables: %v", err)
 	}
 
 	// Platform SDK
@@ -55,6 +56,7 @@ func main() {
 	tagRepo := repository.NewTagRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
 	settingRepo := repository.NewSettingRepository(db)
+	zoneRepo := repository.NewZoneRepository(db)
 
 	// Services
 	articleSvc := service.NewArticleService(articleRepo, tagRepo)
@@ -62,6 +64,7 @@ func main() {
 	tagSvc := service.NewTagService(tagRepo)
 	commentSvc := service.NewCommentService(commentRepo, articleRepo)
 	settingSvc := service.NewSettingService(settingRepo)
+	zoneSvc := service.NewZoneService(zoneRepo, plat)
 
 	platformPublicURL := cfg.Platform.PublicURL
 	if platformPublicURL == "" {
@@ -76,6 +79,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	uploadHandler := handler.NewUploadHandler(plat, adminPlat)
 	settingHandler := handler.NewSettingHandler(settingSvc)
+	zoneHandler := handler.NewZoneHandler(zoneSvc)
 
 	// Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(plat)
@@ -95,6 +99,7 @@ func main() {
 		Comment:  commentHandler,
 		Upload:   uploadHandler,
 		Setting:  settingHandler,
+		Zone:     zoneHandler,
 	}, authMiddleware, plat, cfg)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
@@ -112,6 +117,7 @@ func registerBlogPermissions(plat *sdk.Client) {
 		{Resource: "comment", Actions: []string{"create", "read", "update", "delete"}, Description: "Article comments"},
 		{Resource: "category", Actions: []string{"create", "update", "delete"}, Description: "Article categories"},
 		{Resource: "tag", Actions: []string{"create", "delete"}, Description: "Article tags"},
+		{Resource: "zone", Actions: []string{"create", "read", "update", "delete"}, Description: "Gated content zones"},
 	}
 	if err := plat.Permission.RegisterPermissions("blog", defs); err != nil {
 		log.Printf("Warning: failed to register blog permissions: %v", err)
