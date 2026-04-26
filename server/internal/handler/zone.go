@@ -113,6 +113,7 @@ func (h *ZoneHandler) Create(c *gin.Context) {
 		Description   string `json:"description"`
 		CoverImageURL string `json:"cover_image_url"`
 		Visibility    string `json:"visibility"`
+		RuleLogic     string `json:"rule_logic"`
 		SortOrder     int    `json:"sort_order"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -128,6 +129,7 @@ func (h *ZoneHandler) Create(c *gin.Context) {
 		Description:   req.Description,
 		CoverImageURL: req.CoverImageURL,
 		Visibility:    req.Visibility,
+		RuleLogic:     req.RuleLogic,
 		SortOrder:     req.SortOrder,
 	})
 	if err != nil {
@@ -148,6 +150,7 @@ func (h *ZoneHandler) Update(c *gin.Context) {
 		Description   *string `json:"description"`
 		CoverImageURL *string `json:"cover_image_url"`
 		Visibility    *string `json:"visibility"`
+		RuleLogic     *string `json:"rule_logic"`
 		SortOrder     *int    `json:"sort_order"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -159,6 +162,7 @@ func (h *ZoneHandler) Update(c *gin.Context) {
 		Description:   req.Description,
 		CoverImageURL: req.CoverImageURL,
 		Visibility:    req.Visibility,
+		RuleLogic:     req.RuleLogic,
 		SortOrder:     req.SortOrder,
 	})
 	if err != nil {
@@ -194,20 +198,26 @@ func (h *ZoneHandler) AddRule(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Kind    string `json:"kind" binding:"required"`
-		GuildID string `json:"guild_id"`
-		RoleID  string `json:"role_id"`
-		Label   string `json:"label"`
+		Kind        string `json:"kind" binding:"required"`
+		GuildID     string `json:"guild_id"`
+		RoleID      string `json:"role_id"`
+		Value       int    `json:"value"`
+		ValueStr    string `json:"value_str"`
+		Description string `json:"description"`
+		Label       string `json:"label"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		pkg.Error(c, http.StatusBadRequest, "invalid request")
 		return
 	}
 	rule, err := h.svc.AddRule(uint(id), service.AddRuleInput{
-		Kind:    req.Kind,
-		GuildID: req.GuildID,
-		RoleID:  req.RoleID,
-		Label:   req.Label,
+		Kind:        req.Kind,
+		GuildID:     req.GuildID,
+		RoleID:      req.RoleID,
+		Value:       req.Value,
+		ValueStr:    req.ValueStr,
+		Description: req.Description,
+		Label:       req.Label,
 	})
 	if err != nil {
 		if errors.Is(err, service.ErrZoneNotFound) {

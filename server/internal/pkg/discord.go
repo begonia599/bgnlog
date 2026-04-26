@@ -28,8 +28,21 @@ type DiscordGuild struct {
 
 // DiscordGuildMember is the subset of /users/@me/guilds/{guild_id}/member we use.
 type DiscordGuildMember struct {
-	Roles []string `json:"roles"`
-	// Nick, JoinedAt, etc. — currently unused.
+	Roles        []string `json:"roles"`
+	JoinedAt     string   `json:"joined_at"`     // ISO8601
+	PremiumSince *string  `json:"premium_since"` // non-nil when boosting
+}
+
+// DiscordUser is the minimal /users/@me response for account-level checks.
+type DiscordUser struct {
+	ID string `json:"id"` // snowflake
+}
+
+// DiscordConnection is a linked third-party account on a Discord profile.
+type DiscordConnection struct {
+	Type     string `json:"type"` // e.g. "steam", "twitch", "youtube", "github"
+	Verified bool   `json:"verified"`
+	Name     string `json:"name"`
 }
 
 const discordAPI = "https://discord.com/api/v10"
@@ -82,4 +95,44 @@ func (d *DiscordClient) GetGuildMember(accessToken, guildID string) (member *Dis
 		return nil, false, fmt.Errorf("discord: decode member: %w", err)
 	}
 	return &out, true, nil
+}
+
+// GetCurrentUser returns the authenticated user's Discord profile (requires
+// the `identify` scope, which we always request).
+func (d *DiscordClient) GetCurrentUser(accessToken string) (*DiscordUser, error) {
+	req, _ := http.NewRequest(http.MethodGet, discordAPI+"/users/@me", nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := d.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("discord: get user: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("discord: get user: status %d", resp.StatusCode)
+	}
+	var out DiscordUser
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("discord: decode user: %w", err)
+	}
+	return &out, nil
+}
+
+// ListConnections returns the user's linked third-party accounts (requires the
+// `connections` OAuth scope).
+func (d *DiscordClient) ListConnections(accessToken string) ([]DiscordConnection, error) {
+	req, _ := http.NewRequest(http.MethodGet, discordAPI+"/users/@me/connections", nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := d.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("discord: list connections: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("discord: list connections: status %d", resp.StatusCode)
+	}
+	var out []DiscordConnection
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("discord: decode connections: %w", err)
+	}
+	return out, nil
 }

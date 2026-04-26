@@ -121,12 +121,12 @@ export const zoneApi = {
   checkAccess: (slug: string) => api.get<ApiResponse<ZoneAccessDecision>>(`/api/zones/${slug}/access`),
   // admin
   listAdmin: () => api.get<ApiResponse<Zone[]>>('/api/admin/zones'),
-  create: (data: { slug: string; name: string; description?: string; cover_image_url?: string; visibility?: string; sort_order?: number }) =>
+  create: (data: { slug: string; name: string; description?: string; cover_image_url?: string; visibility?: string; rule_logic?: string; sort_order?: number }) =>
     api.post<ApiResponse<Zone>>('/api/zones', data),
-  update: (id: number, data: { name?: string; description?: string; cover_image_url?: string; visibility?: string; sort_order?: number }) =>
+  update: (id: number, data: { name?: string; description?: string; cover_image_url?: string; visibility?: string; rule_logic?: string; sort_order?: number }) =>
     api.put<ApiResponse<Zone>>(`/api/zones/${id}`, data),
   delete: (id: number) => api.delete(`/api/zones/${id}`),
-  addRule: (zoneId: number, data: { kind: string; guild_id?: string; role_id?: string; label?: string }) =>
+  addRule: (zoneId: number, data: { kind: string; guild_id?: string; role_id?: string; value?: number; value_str?: string; description?: string; label?: string }) =>
     api.post<ApiResponse<ZoneRule>>(`/api/zones/${zoneId}/rules`, data),
   deleteRule: (zoneId: number, ruleId: number) =>
     api.delete(`/api/zones/${zoneId}/rules/${ruleId}`),

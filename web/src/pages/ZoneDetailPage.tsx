@@ -122,6 +122,7 @@ export default function ZoneDetailPage() {
             {/* access gate */}
             {!isPublic && !isAllowed && (
                 <AccessGate
+                    zone={zone}
                     access={access}
                     checking={checking}
                     user={!!user}
@@ -153,6 +154,7 @@ export default function ZoneDetailPage() {
 // ── access gate component ──
 
 function AccessGate({
+    zone,
     access,
     checking,
     user,
@@ -161,6 +163,7 @@ function AccessGate({
     onLogin,
     onRetry,
 }: {
+    zone: Zone
     access: ZoneAccessDecision | null
     checking: boolean
     user: boolean
@@ -231,8 +234,21 @@ function AccessGate({
                 <GateCard
                     icon={<AlertCircle className="h-5 w-5 text-destructive" />}
                     title="访问受限"
-                    description={access.reason || '你不满足该专区的访问条件，请确认你已加入指定的 Discord 服务器或拥有所需角色。'}
+                    description="你不满足该专区的访问条件："
                 >
+                    {zone.rules && zone.rules.length > 0 && (
+                        <div className="text-left w-full max-w-sm mb-3 space-y-1">
+                            {zone.rules.map(r => (
+                                <div key={r.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <span className="text-muted-foreground/40">•</span>
+                                    {r.description || r.kind}
+                                </div>
+                            ))}
+                            <p className="text-[10px] text-muted-foreground/50 pt-1">
+                                {zone.rule_logic === 'and' ? '（须全部满足）' : '（满足任一即可）'}
+                            </p>
+                        </div>
+                    )}
                     <Button size="sm" variant="outline" onClick={onRetry}>重新检查</Button>
                 </GateCard>
             )

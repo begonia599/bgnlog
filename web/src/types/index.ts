@@ -106,12 +106,23 @@ export interface ArchiveItem {
 
 // --- Zone ---
 
+export type ZoneRuleKind =
+  | 'discord_guild_member'
+  | 'discord_guild_role'
+  | 'discord_guild_boost'
+  | 'discord_guild_join_days'
+  | 'discord_account_age'
+  | 'discord_connection'
+
 export interface ZoneRule {
   id: number
   zone_id: number
-  kind: 'discord_guild_member' | 'discord_guild_role'
+  kind: ZoneRuleKind
   guild_id?: string
   role_id?: string
+  value?: number
+  value_str?: string
+  description?: string
   label?: string
   created_at: string
   updated_at: string
@@ -125,6 +136,7 @@ export interface Zone {
   cover_image_url: string
   owner_id: number
   visibility: 'public' | 'gated'
+  rule_logic: 'or' | 'and'
   sort_order: number
   rules?: ZoneRule[]
   created_at: string

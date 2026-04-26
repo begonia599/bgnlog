@@ -6,6 +6,7 @@ import (
 	"blog-server/internal/repository"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,9 +40,10 @@ const (
 	AccessStatusNeedReauth = "need_reauth"
 	AccessStatusError      = "error"
 
-	scopeDiscordIdentify   = "identify"
-	scopeDiscordGuilds     = "guilds"
-	scopeDiscordGuildsRead = "guilds.members.read"
+	scopeDiscordIdentify    = "identify"
+	scopeDiscordGuilds      = "guilds"
+	scopeDiscordGuildsRead  = "guilds.members.read"
+	scopeDiscordConnections = "connections"
 
 	zoneAccessCacheTTL = 5 * time.Minute
 )
@@ -100,6 +102,7 @@ type CreateZoneInput struct {
 	Description   string
 	CoverImageURL string
 	Visibility    string
+	RuleLogic     string
 	SortOrder     int
 }
 
@@ -113,12 +116,20 @@ func (s *ZoneService) Create(ownerID uint, in CreateZoneInput) (*model.Zone, err
 	if in.Visibility != model.ZoneVisibilityPublic && in.Visibility != model.ZoneVisibilityGated {
 		return nil, errors.New("invalid visibility")
 	}
+	rl := in.RuleLogic
+	if rl == "" {
+		rl = model.ZoneRuleLogicOR
+	}
+	if rl != model.ZoneRuleLogicOR && rl != model.ZoneRuleLogicAND {
+		return nil, errors.New("invalid rule_logic")
+	}
 	z := &model.Zone{
 		Slug:          in.Slug,
 		Name:          in.Name,
 		Description:   in.Description,
 		CoverImageURL: in.CoverImageURL,
 		Visibility:    in.Visibility,
+		RuleLogic:     rl,
 		SortOrder:     in.SortOrder,
 		OwnerID:       ownerID,
 	}
@@ -133,6 +144,7 @@ type UpdateZoneInput struct {
 	Description   *string
 	CoverImageURL *string
 	Visibility    *string
+	RuleLogic     *string
 	SortOrder     *int
 }
 
@@ -157,6 +169,13 @@ func (s *ZoneService) Update(id uint, in UpdateZoneInput) (*model.Zone, error) {
 		}
 		z.Visibility = v
 	}
+	if in.RuleLogic != nil {
+		rl := *in.RuleLogic
+		if rl != model.ZoneRuleLogicOR && rl != model.ZoneRuleLogicAND {
+			return nil, errors.New("invalid rule_logic")
+		}
+		z.RuleLogic = rl
+	}
 	if in.SortOrder != nil {
 		z.SortOrder = *in.SortOrder
 	}
@@ -176,10 +195,13 @@ func (s *ZoneService) Delete(id uint) error {
 // --- rules ---
 
 type AddRuleInput struct {
-	Kind    string
-	GuildID string
-	RoleID  string
-	Label   string
+	Kind        string
+	GuildID     string
+	RoleID      string
+	Value       int
+	ValueStr    string
+	Description string
+	Label       string
 }
 
 func (s *ZoneService) AddRule(zoneID uint, in AddRuleInput) (*model.ZoneRule, error) {
@@ -195,15 +217,34 @@ func (s *ZoneService) AddRule(zoneID uint, in AddRuleInput) (*model.ZoneRule, er
 		if in.GuildID == "" || in.RoleID == "" {
 			return nil, fmt.Errorf("%w: guild_id and role_id required", ErrInvalidRule)
 		}
+	case model.ZoneRuleDiscordGuildBoost:
+		if in.GuildID == "" {
+			return nil, fmt.Errorf("%w: guild_id required", ErrInvalidRule)
+		}
+	case model.ZoneRuleDiscordGuildJoinDays:
+		if in.GuildID == "" || in.Value <= 0 {
+			return nil, fmt.Errorf("%w: guild_id and value (days) required", ErrInvalidRule)
+		}
+	case model.ZoneRuleDiscordAccountAge:
+		if in.Value <= 0 {
+			return nil, fmt.Errorf("%w: value (days) required", ErrInvalidRule)
+		}
+	case model.ZoneRuleDiscordConnection:
+		if in.ValueStr == "" {
+			return nil, fmt.Errorf("%w: value_str (connection type) required", ErrInvalidRule)
+		}
 	default:
 		return nil, fmt.Errorf("%w: unsupported kind %q", ErrInvalidRule, in.Kind)
 	}
 	rule := &model.ZoneRule{
-		ZoneID:  zoneID,
-		Kind:    in.Kind,
-		GuildID: in.GuildID,
-		RoleID:  in.RoleID,
-		Label:   in.Label,
+		ZoneID:      zoneID,
+		Kind:        in.Kind,
+		GuildID:     in.GuildID,
+		RoleID:      in.RoleID,
+		Value:       in.Value,
+		ValueStr:    in.ValueStr,
+		Description: in.Description,
+		Label:       in.Label,
 	}
 	if err := s.repo.AddRule(rule); err != nil {
 		return nil, err
@@ -252,9 +293,6 @@ func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) 
 func (s *ZoneService) evaluate(z *model.Zone, userToken string) AccessDecision {
 	now := time.Now()
 
-	// Compute the union of scopes required by all rules so we can request
-	// them all at once during re-auth, rather than dripping the user through
-	// multiple consent screens.
 	required := requiredDiscordScopes(z.Rules)
 
 	// Pull the user's Discord access token from core.
@@ -283,81 +321,228 @@ func (s *ZoneService) evaluate(z *model.Zone, userToken string) AccessDecision {
 		return AccessDecision{Status: AccessStatusError, Reason: err.Error(), EvaluatedAt: now}
 	}
 
-	// Verify all required scopes were granted; if not, ask for re-auth with
-	// the missing ones (the UI can deep-link straight to provider consent).
+	// Verify all required scopes were granted.
 	have := scopeSet(tok.Scopes)
 	var missing []string
-	for _, s := range required {
-		if !have[s] {
-			missing = append(missing, s)
+	for _, sc := range required {
+		if !have[sc] {
+			missing = append(missing, sc)
 		}
 	}
 	if len(missing) > 0 {
 		return AccessDecision{
 			Status:        AccessStatusNeedReauth,
 			Reason:        "missing_scopes",
-			MissingScopes: required, // ask for the full set so we don't churn
+			MissingScopes: required,
 			EvaluatedAt:   now,
 		}
 	}
 
-	// Evaluate rules with OR semantics. We fetch the guild list once and
-	// reuse it for every rule that needs it; per-guild member calls are
-	// only made when a role rule needs them.
-	var guilds []pkg.DiscordGuild
+	// ── Lazy-loaded Discord data ──
+	// Each resource is fetched at most once, regardless of how many rules use it.
+
+	var guildsMap map[string]bool
 	guildsLoaded := false
-	guildSet := func() (map[string]bool, error) {
+	getGuilds := func() (map[string]bool, error) {
 		if !guildsLoaded {
 			gs, err := s.discord.ListUserGuilds(tok.AccessToken)
 			if err != nil {
 				return nil, err
 			}
-			guilds = gs
+			guildsMap = make(map[string]bool, len(gs))
+			for _, g := range gs {
+				guildsMap[g.ID] = true
+			}
 			guildsLoaded = true
 		}
-		set := make(map[string]bool, len(guilds))
-		for _, g := range guilds {
-			set[g.ID] = true
-		}
-		return set, nil
+		return guildsMap, nil
 	}
+
+	memberCache := map[string]*pkg.DiscordGuildMember{} // guildID → member (nil = not found)
+	getMember := func(guildID string) (*pkg.DiscordGuildMember, error) {
+		if m, ok := memberCache[guildID]; ok {
+			return m, nil
+		}
+		m, found, err := s.discord.GetGuildMember(tok.AccessToken, guildID)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			memberCache[guildID] = nil
+			return nil, nil
+		}
+		memberCache[guildID] = m
+		return m, nil
+	}
+
+	var connections []pkg.DiscordConnection
+	connectionsLoaded := false
+	getConnections := func() ([]pkg.DiscordConnection, error) {
+		if !connectionsLoaded {
+			c, err := s.discord.ListConnections(tok.AccessToken)
+			if err != nil {
+				return nil, err
+			}
+			connections = c
+			connectionsLoaded = true
+		}
+		return connections, nil
+	}
+
+	var discordUser *pkg.DiscordUser
+	discordUserLoaded := false
+	getUser := func() (*pkg.DiscordUser, error) {
+		if !discordUserLoaded {
+			u, err := s.discord.GetCurrentUser(tok.AccessToken)
+			if err != nil {
+				return nil, err
+			}
+			discordUser = u
+			discordUserLoaded = true
+		}
+		return discordUser, nil
+	}
+
+	// ── Evaluate each rule ──
+	isAND := z.RuleLogic == model.ZoneRuleLogicAND
+	results := make([]bool, 0, len(z.Rules))
 
 	for _, rule := range z.Rules {
-		switch rule.Kind {
-		case model.ZoneRuleDiscordGuildMember:
-			set, err := guildSet()
-			if err != nil {
-				return AccessDecision{Status: AccessStatusError, Reason: err.Error(), EvaluatedAt: now}
-			}
-			if set[rule.GuildID] {
-				return AccessDecision{Status: AccessStatusAllowed, Reason: "rule_" + fmt.Sprint(rule.ID), EvaluatedAt: now}
-			}
-		case model.ZoneRuleDiscordGuildRole:
-			set, err := guildSet()
-			if err != nil {
-				return AccessDecision{Status: AccessStatusError, Reason: err.Error(), EvaluatedAt: now}
-			}
-			// Optimization: if the user isn't even in that guild, the role
-			// check is guaranteed to fail — skip the API call.
-			if !set[rule.GuildID] {
-				continue
-			}
-			member, found, err := s.discord.GetGuildMember(tok.AccessToken, rule.GuildID)
-			if err != nil {
-				return AccessDecision{Status: AccessStatusError, Reason: err.Error(), EvaluatedAt: now}
-			}
-			if !found {
-				continue
-			}
-			for _, r := range member.Roles {
-				if r == rule.RoleID {
-					return AccessDecision{Status: AccessStatusAllowed, Reason: "rule_" + fmt.Sprint(rule.ID), EvaluatedAt: now}
-				}
-			}
+		passed, evalErr := s.evaluateRule(rule, getGuilds, getMember, getConnections, getUser, now)
+		if evalErr != nil {
+			return AccessDecision{Status: AccessStatusError, Reason: evalErr.Error(), EvaluatedAt: now}
+		}
+		results = append(results, passed)
+
+		// Short-circuit for OR: first pass → allowed
+		if !isAND && passed {
+			return AccessDecision{Status: AccessStatusAllowed, Reason: "rule_" + fmt.Sprint(rule.ID), EvaluatedAt: now}
+		}
+		// Short-circuit for AND: first fail → denied
+		if isAND && !passed {
+			return AccessDecision{Status: AccessStatusDenied, Reason: "rule_" + fmt.Sprint(rule.ID) + "_failed", EvaluatedAt: now}
 		}
 	}
 
+	if isAND {
+		// All passed (didn't short-circuit)
+		return AccessDecision{Status: AccessStatusAllowed, Reason: "all_rules_passed", EvaluatedAt: now}
+	}
+	// OR: none passed
 	return AccessDecision{Status: AccessStatusDenied, Reason: "no_rule_matched", EvaluatedAt: now}
+}
+
+// evaluateRule checks a single rule. Returns (passed, error).
+func (s *ZoneService) evaluateRule(
+	rule model.ZoneRule,
+	getGuilds func() (map[string]bool, error),
+	getMember func(string) (*pkg.DiscordGuildMember, error),
+	getConnections func() ([]pkg.DiscordConnection, error),
+	getUser func() (*pkg.DiscordUser, error),
+	now time.Time,
+) (bool, error) {
+	switch rule.Kind {
+	case model.ZoneRuleDiscordGuildMember:
+		gs, err := getGuilds()
+		if err != nil {
+			return false, err
+		}
+		return gs[rule.GuildID], nil
+
+	case model.ZoneRuleDiscordGuildRole:
+		gs, err := getGuilds()
+		if err != nil {
+			return false, err
+		}
+		if !gs[rule.GuildID] {
+			return false, nil
+		}
+		m, err := getMember(rule.GuildID)
+		if err != nil {
+			return false, err
+		}
+		if m == nil {
+			return false, nil
+		}
+		for _, r := range m.Roles {
+			if r == rule.RoleID {
+				return true, nil
+			}
+		}
+		return false, nil
+
+	case model.ZoneRuleDiscordGuildBoost:
+		gs, err := getGuilds()
+		if err != nil {
+			return false, err
+		}
+		if !gs[rule.GuildID] {
+			return false, nil
+		}
+		m, err := getMember(rule.GuildID)
+		if err != nil {
+			return false, err
+		}
+		if m == nil {
+			return false, nil
+		}
+		return m.PremiumSince != nil, nil
+
+	case model.ZoneRuleDiscordGuildJoinDays:
+		gs, err := getGuilds()
+		if err != nil {
+			return false, err
+		}
+		if !gs[rule.GuildID] {
+			return false, nil
+		}
+		m, err := getMember(rule.GuildID)
+		if err != nil {
+			return false, err
+		}
+		if m == nil || m.JoinedAt == "" {
+			return false, nil
+		}
+		joinedAt, parseErr := time.Parse(time.RFC3339, m.JoinedAt)
+		if parseErr != nil {
+			return false, nil
+		}
+		daysSinceJoin := int(now.Sub(joinedAt).Hours() / 24)
+		return daysSinceJoin >= rule.Value, nil
+
+	case model.ZoneRuleDiscordAccountAge:
+		u, err := getUser()
+		if err != nil {
+			return false, err
+		}
+		created := discordSnowflakeTime(u.ID)
+		daysSinceCreation := int(now.Sub(created).Hours() / 24)
+		return daysSinceCreation >= rule.Value, nil
+
+	case model.ZoneRuleDiscordConnection:
+		conns, err := getConnections()
+		if err != nil {
+			return false, err
+		}
+		for _, c := range conns {
+			if strings.EqualFold(c.Type, rule.ValueStr) && c.Verified {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	return false, nil
+}
+
+// discordSnowflakeTime extracts the creation timestamp from a Discord snowflake ID.
+func discordSnowflakeTime(id string) time.Time {
+	const discordEpoch = 1420070400000 // ms
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return time.Time{}
+	}
+	ms := (n >> 22) + discordEpoch
+	return time.UnixMilli(ms)
 }
 
 // InvalidateUser drops all cached access decisions for a user — call after
@@ -369,13 +554,18 @@ func (s *ZoneService) InvalidateUser(userID uint) {
 func requiredDiscordScopes(rules []model.ZoneRule) []string {
 	needGuilds := false
 	needGuildsRead := false
+	needConnections := false
 	for _, r := range rules {
 		switch r.Kind {
 		case model.ZoneRuleDiscordGuildMember:
 			needGuilds = true
-		case model.ZoneRuleDiscordGuildRole:
+		case model.ZoneRuleDiscordGuildRole, model.ZoneRuleDiscordGuildBoost, model.ZoneRuleDiscordGuildJoinDays:
 			needGuilds = true
 			needGuildsRead = true
+		case model.ZoneRuleDiscordAccountAge:
+			// only needs identify (always requested)
+		case model.ZoneRuleDiscordConnection:
+			needConnections = true
 		}
 	}
 	out := []string{scopeDiscordIdentify}
@@ -384,6 +574,9 @@ func requiredDiscordScopes(rules []model.ZoneRule) []string {
 	}
 	if needGuildsRead {
 		out = append(out, scopeDiscordGuildsRead)
+	}
+	if needConnections {
+		out = append(out, scopeDiscordConnections)
 	}
 	return out
 }
@@ -476,8 +669,10 @@ func (s *ZoneService) RequestReauth(userToken, redirectURI string) (string, erro
 	if userToken == "" {
 		return "", ErrNoUserToken
 	}
+	// Request the full set of scopes any zone rule could need.
+	extraScopes := []string{scopeDiscordGuilds, scopeDiscordGuildsRead, scopeDiscordConnections}
 	client := s.platform.WithToken(userToken)
-	resp, err := client.Auth.OAuthBindAuthorize("discord", redirectURI, scopeDiscordGuilds, scopeDiscordGuildsRead)
+	resp, err := client.Auth.OAuthBindAuthorize("discord", redirectURI, extraScopes...)
 	if err != nil {
 		return "", fmt.Errorf("oauth bind authorize: %w", err)
 	}

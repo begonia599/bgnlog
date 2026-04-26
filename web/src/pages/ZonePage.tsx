@@ -18,7 +18,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog'
-import type { Zone, ZoneRule } from '@/types'
+import type { Zone, ZoneRule, ZoneRuleKind } from '@/types'
 
 // ────────────────────────────────────────────────────
 // Zone list page — admin inline management via dialog
@@ -264,27 +264,69 @@ function CreateZoneDialog({ open, onClose, onCreated }: { open: boolean; onClose
     )
 }
 
+// ── rule kind display helpers ──
+
+const RULE_KIND_LABELS: Record<ZoneRuleKind, string> = {
+    discord_guild_member: '服务器成员',
+    discord_guild_role: '服务器角色',
+    discord_guild_boost: '服务器加速',
+    discord_guild_join_days: '加入天数',
+    discord_account_age: '账号年龄',
+    discord_connection: '第三方关联',
+}
+
+const RULE_KIND_OPTIONS: { value: ZoneRuleKind; label: string; hint: string }[] = [
+    { value: 'discord_guild_member', label: '服务器成员', hint: '用户须是指定 Discord 服务器的成员' },
+    { value: 'discord_guild_role', label: '服务器角色', hint: '用户须拥有指定服务器的某个角色' },
+    { value: 'discord_guild_boost', label: '服务器加速者', hint: '用户须正在加速指定服务器 (Nitro Boost)' },
+    { value: 'discord_guild_join_days', label: '加入时长', hint: '用户须加入指定服务器满 N 天' },
+    { value: 'discord_account_age', label: '账号年龄', hint: 'Discord 账号须注册满 N 天' },
+    { value: 'discord_connection', label: '第三方关联', hint: '用户须在 Discord 关联指定平台 (Steam/Twitch 等)' },
+]
+
+const needsGuildId = (k: ZoneRuleKind) => ['discord_guild_member', 'discord_guild_role', 'discord_guild_boost', 'discord_guild_join_days'].includes(k)
+const needsRoleId = (k: ZoneRuleKind) => k === 'discord_guild_role'
+const needsValue = (k: ZoneRuleKind) => ['discord_guild_join_days', 'discord_account_age'].includes(k)
+const needsValueStr = (k: ZoneRuleKind) => k === 'discord_connection'
+
+function ruleDescription(r: ZoneRule): string {
+    if (r.description) return r.description
+    switch (r.kind) {
+        case 'discord_guild_member': return `服务器 ${r.guild_id} 的成员`
+        case 'discord_guild_role': return `服务器 ${r.guild_id} 中拥有角色 ${r.role_id}`
+        case 'discord_guild_boost': return `正在加速服务器 ${r.guild_id}`
+        case 'discord_guild_join_days': return `加入服务器 ${r.guild_id} 满 ${r.value} 天`
+        case 'discord_account_age': return `Discord 账号注册满 ${r.value} 天`
+        case 'discord_connection': return `已关联 ${r.value_str} 平台`
+        default: return r.kind
+    }
+}
+
 // ── manage (edit + rules) dialog ──
 
 function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: () => void; onUpdated: () => void }) {
     const [name, setName] = useState(zone.name)
     const [desc, setDesc] = useState(zone.description)
     const [visibility, setVisibility] = useState(zone.visibility)
+    const [ruleLogic, setRuleLogic] = useState<'or' | 'and'>(zone.rule_logic || 'or')
     const [rules, setRules] = useState<ZoneRule[]>(zone.rules ?? [])
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
 
     // new rule form
-    const [ruleKind, setRuleKind] = useState<'discord_guild_member' | 'discord_guild_role'>('discord_guild_member')
+    const [ruleKind, setRuleKind] = useState<ZoneRuleKind>('discord_guild_member')
     const [ruleGuildId, setRuleGuildId] = useState('')
     const [ruleRoleId, setRuleRoleId] = useState('')
+    const [ruleValue, setRuleValue] = useState('')
+    const [ruleValueStr, setRuleValueStr] = useState('')
+    const [ruleDesc, setRuleDesc] = useState('')
     const [ruleLabel, setRuleLabel] = useState('')
     const [addingRule, setAddingRule] = useState(false)
 
     const handleSave = async () => {
         setSaving(true)
         try {
-            await zoneApi.update(zone.id, { name, description: desc, visibility })
+            await zoneApi.update(zone.id, { name, description: desc, visibility, rule_logic: ruleLogic })
             onUpdated()
         } catch (e: any) {
             setError(e?.response?.data?.message || '保存失败')
@@ -293,19 +335,29 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
         }
     }
 
+    const canAddRule = () => {
+        if (needsGuildId(ruleKind) && !ruleGuildId.trim()) return false
+        if (needsRoleId(ruleKind) && !ruleRoleId.trim()) return false
+        if (needsValue(ruleKind) && (!ruleValue.trim() || parseInt(ruleValue) <= 0)) return false
+        if (needsValueStr(ruleKind) && !ruleValueStr.trim()) return false
+        return true
+    }
+
     const handleAddRule = async () => {
-        if (!ruleGuildId.trim()) return
-        if (ruleKind === 'discord_guild_role' && !ruleRoleId.trim()) return
+        if (!canAddRule()) return
         setAddingRule(true)
         try {
             const res = await zoneApi.addRule(zone.id, {
                 kind: ruleKind,
-                guild_id: ruleGuildId.trim(),
-                role_id: ruleKind === 'discord_guild_role' ? ruleRoleId.trim() : undefined,
+                guild_id: needsGuildId(ruleKind) ? ruleGuildId.trim() : undefined,
+                role_id: needsRoleId(ruleKind) ? ruleRoleId.trim() : undefined,
+                value: needsValue(ruleKind) ? parseInt(ruleValue) : undefined,
+                value_str: needsValueStr(ruleKind) ? ruleValueStr.trim() : undefined,
+                description: ruleDesc.trim() || undefined,
                 label: ruleLabel.trim() || undefined,
             })
             setRules(prev => [...prev, res.data.data])
-            setRuleGuildId(''); setRuleRoleId(''); setRuleLabel('')
+            setRuleGuildId(''); setRuleRoleId(''); setRuleValue(''); setRuleValueStr(''); setRuleDesc(''); setRuleLabel('')
         } catch (e: any) {
             setError(e?.response?.data?.message || '添加规则失败')
         } finally {
@@ -361,9 +413,25 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
 
                 {/* access rules */}
                 <div className="border-t pt-4 mt-2">
-                    <h3 className="text-sm font-medium mb-3 flex items-center gap-1.5">
-                        <ShieldCheck className="h-4 w-4 text-muted-foreground" /> 访问规则
-                    </h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium flex items-center gap-1.5">
+                            <ShieldCheck className="h-4 w-4 text-muted-foreground" /> 访问规则
+                        </h3>
+                        <div className="flex items-center gap-1 rounded-lg border p-0.5">
+                            <button
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${ruleLogic === 'or' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => setRuleLogic('or')}
+                            >
+                                满足任一 (OR)
+                            </button>
+                            <button
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${ruleLogic === 'and' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => setRuleLogic('and')}
+                            >
+                                全部满足 (AND)
+                            </button>
+                        </div>
+                    </div>
 
                     {rules.length === 0 ? (
                         <p className="text-xs text-muted-foreground/60 mb-3">
@@ -371,15 +439,23 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
                         </p>
                     ) : (
                         <div className="space-y-2 mb-4">
-                            {rules.map(r => (
-                                <div key={r.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-xs">
-                                    <Badge variant="outline" className="text-[10px] shrink-0">
-                                        {r.kind === 'discord_guild_member' ? '服务器成员' : '服务器角色'}
-                                    </Badge>
-                                    <span className="text-muted-foreground font-mono truncate">{r.guild_id}</span>
-                                    {r.role_id && <span className="text-muted-foreground font-mono truncate">/ {r.role_id}</span>}
-                                    {r.label && <span className="text-muted-foreground">({r.label})</span>}
-                                    <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteRule(r.id)}>
+                            {rules.map((r, i) => (
+                                <div key={r.id} className="flex items-start gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-xs">
+                                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <Badge variant="outline" className="text-[10px] shrink-0">
+                                                {RULE_KIND_LABELS[r.kind] || r.kind}
+                                            </Badge>
+                                            {r.label && <span className="text-muted-foreground/60 truncate">({r.label})</span>}
+                                        </div>
+                                        <span className="text-muted-foreground truncate">{ruleDescription(r)}</span>
+                                    </div>
+                                    {i < rules.length - 1 && (
+                                        <span className="text-[9px] font-mono text-muted-foreground/40 shrink-0 self-center">
+                                            {ruleLogic === 'or' ? 'OR' : 'AND'}
+                                        </span>
+                                    )}
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive self-center" onClick={() => handleDeleteRule(r.id)}>
                                         <Trash2 className="h-3 w-3" />
                                     </Button>
                                 </div>
@@ -390,22 +466,41 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
                     {/* add rule form */}
                     <div className="rounded-lg border border-dashed p-3 space-y-3">
                         <p className="text-xs font-medium text-muted-foreground">添加规则</p>
-                        <div className="flex gap-2">
-                            <Button type="button" size="sm" variant={ruleKind === 'discord_guild_member' ? 'default' : 'outline'} onClick={() => { setRuleKind('discord_guild_member'); setRuleRoleId('') }} className="text-xs h-7">
-                                服务器成员
-                            </Button>
-                            <Button type="button" size="sm" variant={ruleKind === 'discord_guild_role' ? 'default' : 'outline'} onClick={() => setRuleKind('discord_guild_role')} className="text-xs h-7">
-                                服务器角色
-                            </Button>
+                        <div className="flex flex-wrap gap-1.5">
+                            {RULE_KIND_OPTIONS.map(opt => (
+                                <Button
+                                    key={opt.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={ruleKind === opt.value ? 'default' : 'outline'}
+                                    onClick={() => { setRuleKind(opt.value); setRuleGuildId(''); setRuleRoleId(''); setRuleValue(''); setRuleValueStr('') }}
+                                    className="text-[11px] h-7"
+                                    title={opt.hint}
+                                >
+                                    {opt.label}
+                                </Button>
+                            ))}
                         </div>
+                        <p className="text-[11px] text-muted-foreground/60">
+                            {RULE_KIND_OPTIONS.find(o => o.value === ruleKind)?.hint}
+                        </p>
                         <div className="grid gap-2">
-                            <Input placeholder="Discord 服务器 ID (Guild ID)" value={ruleGuildId} onChange={e => setRuleGuildId(e.target.value)} className="h-8 text-xs font-mono" />
-                            {ruleKind === 'discord_guild_role' && (
+                            {needsGuildId(ruleKind) && (
+                                <Input placeholder="Discord 服务器 ID (Guild ID)" value={ruleGuildId} onChange={e => setRuleGuildId(e.target.value)} className="h-8 text-xs font-mono" />
+                            )}
+                            {needsRoleId(ruleKind) && (
                                 <Input placeholder="Discord 角色 ID (Role ID)" value={ruleRoleId} onChange={e => setRuleRoleId(e.target.value)} className="h-8 text-xs font-mono" />
                             )}
-                            <Input placeholder="备注（可选）" value={ruleLabel} onChange={e => setRuleLabel(e.target.value)} className="h-8 text-xs" />
+                            {needsValue(ruleKind) && (
+                                <Input type="number" min={1} placeholder={ruleKind === 'discord_account_age' ? '最少天数（如 30）' : '最少加入天数（如 7）'} value={ruleValue} onChange={e => setRuleValue(e.target.value)} className="h-8 text-xs" />
+                            )}
+                            {needsValueStr(ruleKind) && (
+                                <Input placeholder="平台类型（如 steam / twitch / youtube / github）" value={ruleValueStr} onChange={e => setRuleValueStr(e.target.value)} className="h-8 text-xs" />
+                            )}
+                            <Input placeholder="显示描述（可选，展示给用户看）" value={ruleDesc} onChange={e => setRuleDesc(e.target.value)} className="h-8 text-xs" />
+                            <Input placeholder="管理备注（可选，仅管理员可见）" value={ruleLabel} onChange={e => setRuleLabel(e.target.value)} className="h-8 text-xs" />
                         </div>
-                        <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={handleAddRule} disabled={addingRule || !ruleGuildId.trim()}>
+                        <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={handleAddRule} disabled={addingRule || !canAddRule()}>
                             <Plus className="h-3 w-3" /> {addingRule ? '添加中…' : '添加规则'}
                         </Button>
                     </div>
