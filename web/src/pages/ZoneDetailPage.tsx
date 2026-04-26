@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { zoneApi, zonePostApi } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -154,7 +154,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 function ZonePostList({ slug }: { slug: string }) {
     const navigate = useNavigate()
-    const { isAdmin } = useAuth()
     const [posts, setPosts] = useState<ZonePost[]>([])
     const [total, setTotal] = useState(0)
     const [page, setPage] = useState(1)
