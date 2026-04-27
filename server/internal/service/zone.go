@@ -6,6 +6,7 @@ import (
 	"blog-server/internal/repository"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -294,11 +295,13 @@ func (s *ZoneService) evaluate(z *model.Zone, userToken string) AccessDecision {
 	now := time.Now()
 
 	required := requiredDiscordScopes(z.Rules)
+	log.Printf("[zone-access] zone=%d required_scopes=%v", z.ID, required)
 
 	// Pull the user's Discord access token from core.
 	scoped := s.platform.WithToken(userToken)
 	tok, err := scoped.Auth.GetOAuthToken("discord")
 	if err != nil {
+		log.Printf("[zone-access] GetOAuthToken error: %v", err)
 		var apiErr *sdk.APIError
 		if errors.As(err, &apiErr) {
 			switch apiErr.StatusCode {
@@ -321,6 +324,8 @@ func (s *ZoneService) evaluate(z *model.Zone, userToken string) AccessDecision {
 		return AccessDecision{Status: AccessStatusError, Reason: err.Error(), EvaluatedAt: now}
 	}
 
+	log.Printf("[zone-access] token scopes=%v", tok.Scopes)
+
 	// Verify all required scopes were granted.
 	have := scopeSet(tok.Scopes)
 	var missing []string
@@ -330,6 +335,7 @@ func (s *ZoneService) evaluate(z *model.Zone, userToken string) AccessDecision {
 		}
 	}
 	if len(missing) > 0 {
+		log.Printf("[zone-access] missing scopes: %v (have=%v, required=%v)", missing, tok.Scopes, required)
 		return AccessDecision{
 			Status:        AccessStatusNeedReauth,
 			Reason:        "missing_scopes",
