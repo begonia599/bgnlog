@@ -283,6 +283,7 @@ func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) 
 	}
 
 	if cached, ok := s.cache.get(z.ID, userID); ok {
+		log.Printf("[zone-access] CACHE HIT zone=%d user=%d status=%s", z.ID, userID, cached.Status)
 		return cached
 	}
 
@@ -635,8 +636,10 @@ func (c *zoneAccessCache) put(zoneID, userID uint, d AccessDecision) {
 	// quickly (e.g. by re-authorizing Discord) and stale cache would block.
 	switch d.Status {
 	case AccessStatusError, AccessStatusNeedReauth, AccessStatusNeedLink:
+		log.Printf("[zone-cache] NOT caching zone=%d user=%d status=%s", zoneID, userID, d.Status)
 		return
 	}
+	log.Printf("[zone-cache] caching zone=%d user=%d status=%s ttl=%v", zoneID, userID, d.Status, zoneAccessCacheTTL)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.m[zoneAccessCacheKey{zoneID, userID}] = zoneAccessCacheEntry{
@@ -648,11 +651,14 @@ func (c *zoneAccessCache) put(zoneID, userID uint, d AccessDecision) {
 func (c *zoneAccessCache) invalidateZone(zoneID uint) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	count := 0
 	for k := range c.m {
 		if k.zoneID == zoneID {
 			delete(c.m, k)
+			count++
 		}
 	}
+	log.Printf("[zone-cache] invalidated zone=%d entries=%d", zoneID, count)
 }
 
 func (c *zoneAccessCache) invalidateUser(userID uint) {
