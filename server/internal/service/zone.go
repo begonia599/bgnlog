@@ -275,10 +275,12 @@ func (s *ZoneService) DeleteRule(zoneID, ruleID uint) error {
 func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) AccessDecision {
 	// Public zones always pass.
 	if z.Visibility == model.ZoneVisibilityPublic {
+		log.Printf("[zone-access] zone=%d EARLY allowed reason=public", z.ID)
 		return AccessDecision{Status: AccessStatusAllowed, Reason: "public", EvaluatedAt: time.Now()}
 	}
 	// Gated but no rules — degenerate "any logged-in user" case.
 	if len(z.Rules) == 0 {
+		log.Printf("[zone-access] zone=%d EARLY allowed reason=no_rules", z.ID)
 		return AccessDecision{Status: AccessStatusAllowed, Reason: "no_rules", EvaluatedAt: time.Now()}
 	}
 
