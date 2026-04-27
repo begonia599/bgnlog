@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutGrid, Plus, Trash2, Shield, ShieldCheck, Globe, Lock, ChevronRight } from 'lucide-react'
+import { LayoutGrid, Plus, Trash2, Shield, ShieldCheck, Globe, Lock, ChevronRight, ImagePlus, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { zoneApi } from '@/api'
+import { zoneApi, uploadApi } from '@/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -129,7 +129,12 @@ function ZoneCard({ zone, isAdmin, onManage }: { zone: Zone; isAdmin: boolean; o
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.2 }}
         >
-            <Card className="group relative h-full transition-colors hover:ring-foreground/20 cursor-pointer" onClick={() => navigate(`/zone/${zone.slug}`)}>
+            <Card className="group relative h-full transition-colors hover:ring-foreground/20 cursor-pointer overflow-hidden" onClick={() => navigate(`/zone/${zone.slug}`)}>
+                {zone.cover_image_url && (
+                    <div className="h-28 w-full overflow-hidden">
+                        <img src={zone.cover_image_url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                    </div>
+                )}
                 <CardHeader>
                     <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -188,21 +193,62 @@ function EmptyState() {
 
 // ── create dialog ──
 
+function CoverUpload({ url, onChange }: { url: string; onChange: (url: string) => void }) {
+    const [uploading, setUploading] = useState(false)
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setUploading(true)
+        try {
+            const res = await uploadApi.upload(file)
+            onChange(res.data.data.url)
+        } catch { /* */ }
+        finally { setUploading(false); e.target.value = '' }
+    }
+    const inputId = `cover-upload-${Math.random().toString(36).slice(2, 8)}`
+    return (
+        <div className="grid gap-2">
+            <Label>封面图片</Label>
+            {url ? (
+                <div className="relative rounded-lg overflow-hidden h-32 bg-secondary">
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                        className="absolute top-1.5 right-1.5 rounded-full bg-background/80 p-1 hover:bg-background transition-colors"
+                        onClick={() => onChange('')}
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            ) : (
+                <label
+                    htmlFor={inputId}
+                    className="flex flex-col items-center justify-center h-24 rounded-lg border border-dashed cursor-pointer hover:bg-secondary/30 transition-colors"
+                >
+                    <ImagePlus className="h-5 w-5 text-muted-foreground/40 mb-1" />
+                    <span className="text-xs text-muted-foreground/50">{uploading ? '上传中…' : '点击上传封面'}</span>
+                </label>
+            )}
+            <input id={inputId} type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+        </div>
+    )
+}
+
 function CreateZoneDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
     const [slug, setSlug] = useState('')
     const [name, setName] = useState('')
     const [desc, setDesc] = useState('')
+    const [cover, setCover] = useState('')
     const [visibility, setVisibility] = useState<'gated' | 'public'>('gated')
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
 
-    const reset = () => { setSlug(''); setName(''); setDesc(''); setVisibility('gated'); setError('') }
+    const reset = () => { setSlug(''); setName(''); setDesc(''); setCover(''); setVisibility('gated'); setError('') }
 
     const handleCreate = async () => {
         if (!slug.trim() || !name.trim()) { setError('slug 和名称为必填'); return }
         setSubmitting(true)
         try {
-            await zoneApi.create({ slug: slug.trim(), name: name.trim(), description: desc, visibility })
+            await zoneApi.create({ slug: slug.trim(), name: name.trim(), description: desc, cover_image_url: cover || undefined, visibility })
             reset()
             onCreated()
         } catch (e: any) {
@@ -220,6 +266,7 @@ function CreateZoneDialog({ open, onClose, onCreated }: { open: boolean; onClose
                     <DialogDescription>创建一个新的内容专区</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
+                    <CoverUpload url={cover} onChange={setCover} />
                     <div className="grid gap-2">
                         <Label>Slug（URL 路径）</Label>
                         <Input placeholder="my-zone" value={slug} onChange={e => setSlug(e.target.value)} />
@@ -307,6 +354,7 @@ function ruleDescription(r: ZoneRule): string {
 function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: () => void; onUpdated: () => void }) {
     const [name, setName] = useState(zone.name)
     const [desc, setDesc] = useState(zone.description)
+    const [cover, setCover] = useState(zone.cover_image_url || '')
     const [visibility, setVisibility] = useState(zone.visibility)
     const [ruleLogic, setRuleLogic] = useState<'or' | 'and'>(zone.rule_logic || 'or')
     const [rules, setRules] = useState<ZoneRule[]>(zone.rules ?? [])
@@ -326,7 +374,7 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
     const handleSave = async () => {
         setSaving(true)
         try {
-            await zoneApi.update(zone.id, { name, description: desc, visibility, rule_logic: ruleLogic })
+            await zoneApi.update(zone.id, { name, description: desc, cover_image_url: cover || undefined, visibility, rule_logic: ruleLogic })
             onUpdated()
         } catch (e: any) {
             setError(e?.response?.data?.message || '保存失败')
@@ -390,6 +438,7 @@ function ManageZoneDialog({ zone, onClose, onUpdated }: { zone: Zone; onClose: (
 
                 {/* basic info */}
                 <div className="grid gap-4 py-2">
+                    <CoverUpload url={cover} onChange={setCover} />
                     <div className="grid gap-2">
                         <Label>名称</Label>
                         <Input value={name} onChange={e => setName(e.target.value)} />

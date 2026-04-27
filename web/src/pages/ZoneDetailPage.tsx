@@ -110,6 +110,11 @@ export default function ZoneDetailPage() {
             </Link>
 
             {/* zone header */}
+            {zone.cover_image_url && (
+                <div className="rounded-xl overflow-hidden h-40 mb-6 -mx-2">
+                    <img src={zone.cover_image_url} alt="" className="h-full w-full object-cover" />
+                </div>
+            )}
             <div className="mb-10">
                 <div className="flex items-center gap-2 mb-2">
                     {isPublic
