@@ -273,6 +273,7 @@ func (s *ZoneService) DeleteRule(zoneID, ruleID uint) error {
 // also invalidate per-user when their Discord link state changes (handled in
 // auth handler — TODO once we wire it).
 func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) AccessDecision {
+	log.Printf("[zone-access] zone=%d visibility=%s rules_count=%d user=%d", z.ID, z.Visibility, len(z.Rules), userID)
 	// Public zones always pass.
 	if z.Visibility == model.ZoneVisibilityPublic {
 		log.Printf("[zone-access] zone=%d EARLY allowed reason=public", z.ID)
