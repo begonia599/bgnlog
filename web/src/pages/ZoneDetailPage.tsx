@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Shield, Lock, Globe, AlertCircle, ExternalLink, Loader2, Plus, MessageSquare, Pin, EyeOff, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Shield, Lock, Globe, AlertCircle, ExternalLink, Loader2, Plus, MessageSquare, Pin, EyeOff, ChevronRight, ImagePlus, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { zoneApi, zonePostApi } from '@/api'
+import { zoneApi, zonePostApi, uploadApi } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -220,6 +220,20 @@ function ZonePostList({ slug }: { slug: string }) {
                                         {STATUS_LABELS[post.status]?.label || post.status}
                                     </Badge>
                                 </div>
+                                {post.images && post.images.length > 0 && (
+                                    <div className="flex gap-1.5 my-1">
+                                        {post.images.slice(0, 3).map((url, i) => (
+                                            <div key={i} className="w-14 h-14 rounded overflow-hidden border bg-secondary/30">
+                                                <img src={url} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                        ))}
+                                        {post.images.length > 3 && (
+                                            <div className="w-14 h-14 rounded border bg-secondary/30 flex items-center justify-center text-xs text-muted-foreground">
+                                                +{post.images.length - 3}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
                                     <span className="flex items-center gap-1">
                                         {post.is_anonymous && <EyeOff className="h-3 w-3" />}
@@ -259,15 +273,36 @@ function ZonePostList({ slug }: { slug: string }) {
 function CreatePostForm({ slug, onCreated, onCancel }: { slug: string; onCreated: () => void; onCancel: () => void }) {
     const [title, setTitle] = useState('')
     const [content, setContent] = useState('')
+    const [images, setImages] = useState<string[]>([])
+    const [uploading, setUploading] = useState(false)
     const [anonymous, setAnonymous] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files || files.length === 0) return
+        setUploading(true)
+        try {
+            for (const file of Array.from(files)) {
+                const res = await uploadApi.upload(file)
+                setImages(prev => [...prev, res.data.data.url])
+            }
+        } catch {
+            setError('图片上传失败')
+        } finally {
+            setUploading(false)
+            e.target.value = ''
+        }
+    }
+
+    const removeImage = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx))
 
     const handleSubmit = async () => {
         if (!title.trim() || !content.trim()) { setError('标题和内容不能为空'); return }
         setSubmitting(true)
         try {
-            await zonePostApi.createPost(slug, { title: title.trim(), content: content.trim(), is_anonymous: anonymous })
+            await zonePostApi.createPost(slug, { title: title.trim(), content: content.trim(), images: images.length > 0 ? images : undefined, is_anonymous: anonymous })
             onCreated()
         } catch (e: any) {
             setError(e?.response?.data?.message || '发帖失败')
@@ -287,6 +322,26 @@ function CreatePostForm({ slug, onCreated, onCancel }: { slug: string; onCreated
                     <Label className="text-xs">内容</Label>
                     <Textarea placeholder="详细描述…" value={content} onChange={e => setContent(e.target.value)} rows={4} className="text-sm resize-none" />
                 </div>
+                {/* image upload */}
+                <div className="space-y-2">
+                    {images.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {images.map((url, i) => (
+                                <div key={i} className="relative group w-20 h-20 rounded-md overflow-hidden border">
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                    <button onClick={() => removeImage(i)} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <label className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {uploading ? '上传中…' : '添加图片'}
+                        <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" disabled={uploading} />
+                    </label>
+                </div>
                 <div className="flex items-center gap-2">
                     <input type="checkbox" id="anon-post" checked={anonymous} onChange={e => setAnonymous(e.target.checked)} className="h-3.5 w-3.5 rounded border-border" />
                     <label htmlFor="anon-post" className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
@@ -296,7 +351,7 @@ function CreatePostForm({ slug, onCreated, onCancel }: { slug: string; onCreated
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <div className="flex justify-end gap-2">
                     <Button size="sm" variant="ghost" onClick={onCancel} className="h-7 text-xs">取消</Button>
-                    <Button size="sm" onClick={handleSubmit} disabled={submitting} className="h-7 text-xs">
+                    <Button size="sm" onClick={handleSubmit} disabled={submitting || uploading} className="h-7 text-xs">
                         {submitting ? '发布中…' : '发布'}
                     </Button>
                 </div>

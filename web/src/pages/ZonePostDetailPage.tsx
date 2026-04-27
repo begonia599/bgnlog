@@ -158,6 +158,17 @@ export default function ZonePostDetailPage() {
                     </div>
                     <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
+                    {/* images */}
+                    {post.images && post.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {post.images.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-32 h-32 rounded-md overflow-hidden border hover:opacity-80 transition-opacity">
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
                     {/* actions */}
                     {(post.is_owner || isAdmin) && (
                         <div className="flex items-center gap-2 pt-2 border-t">

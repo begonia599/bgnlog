@@ -41,19 +41,20 @@ func anonAlias(zoneID, userID uint) string {
 // PostResponse is the public-facing representation of a ZonePost.
 // Anonymous posts replace the author info with an alias.
 type PostResponse struct {
-	ID           uint      `json:"id"`
-	ZoneID       uint      `json:"zone_id"`
-	Title        string    `json:"title"`
-	Content      string    `json:"content"`
-	IsAnonymous  bool      `json:"is_anonymous"`
-	IsPinned     bool      `json:"is_pinned"`
-	Status       string    `json:"status"`
-	CommentCount int       `json:"comment_count"`
-	AuthorName   string    `json:"author_name"`
-	AuthorAvatar string    `json:"author_avatar"`
-	IsOwner      bool      `json:"is_owner"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint              `json:"id"`
+	ZoneID       uint              `json:"zone_id"`
+	Title        string            `json:"title"`
+	Content      string            `json:"content"`
+	Images       model.StringSlice `json:"images"`
+	IsAnonymous  bool              `json:"is_anonymous"`
+	IsPinned     bool              `json:"is_pinned"`
+	Status       string            `json:"status"`
+	CommentCount int               `json:"comment_count"`
+	AuthorName   string            `json:"author_name"`
+	AuthorAvatar string            `json:"author_avatar"`
+	IsOwner      bool              `json:"is_owner"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 func toPostResponse(p *model.ZonePost, viewerID uint) PostResponse {
@@ -62,6 +63,7 @@ func toPostResponse(p *model.ZonePost, viewerID uint) PostResponse {
 		ZoneID:       p.ZoneID,
 		Title:        p.Title,
 		Content:      p.Content,
+		Images:       p.Images,
 		IsAnonymous:  p.IsAnonymous,
 		IsPinned:     p.IsPinned,
 		Status:       p.Status,
@@ -120,6 +122,7 @@ type CreatePostInput struct {
 	UserID       uint
 	Title        string
 	Content      string
+	Images       []string
 	IsAnonymous  bool
 	AuthorName   string
 	AuthorAvatar string
@@ -134,6 +137,7 @@ func (s *ZonePostService) CreatePost(in CreatePostInput) (*PostResponse, error) 
 		UserID:       in.UserID,
 		Title:        in.Title,
 		Content:      in.Content,
+		Images:       in.Images,
 		IsAnonymous:  in.IsAnonymous,
 		Status:       model.ZonePostStatusOpen,
 		AuthorName:   in.AuthorName,

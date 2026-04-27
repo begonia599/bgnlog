@@ -109,9 +109,10 @@ func (h *ZonePostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Title       string `json:"title" binding:"required"`
-		Content     string `json:"content" binding:"required"`
-		IsAnonymous bool   `json:"is_anonymous"`
+		Title       string   `json:"title" binding:"required"`
+		Content     string   `json:"content" binding:"required"`
+		Images      []string `json:"images"`
+		IsAnonymous bool     `json:"is_anonymous"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		pkg.Error(c, http.StatusBadRequest, "invalid request")
@@ -122,6 +123,7 @@ func (h *ZonePostHandler) CreatePost(c *gin.Context) {
 		UserID:       h.viewerID(c),
 		Title:        req.Title,
 		Content:      req.Content,
+		Images:       req.Images,
 		IsAnonymous:  req.IsAnonymous,
 		AuthorName:   h.viewerName(c),
 		AuthorAvatar: h.viewerAvatar(c),

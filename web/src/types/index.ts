@@ -157,6 +157,7 @@ export interface ZonePost {
   zone_id: number
   title: string
   content: string
+  images: string[]
   is_anonymous: boolean
   is_pinned: boolean
   status: 'open' | 'closed' | 'resolved'

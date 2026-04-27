@@ -140,7 +140,7 @@ export const zonePostApi = {
     api.get<ApiResponse<ZonePostListResult>>(`/api/zones/${slug}/posts?page=${page}&size=${size}`),
   getPost: (slug: string, postId: number) =>
     api.get<ApiResponse<ZonePost>>(`/api/zones/${slug}/posts/${postId}`),
-  createPost: (slug: string, data: { title: string; content: string; is_anonymous?: boolean }) =>
+  createPost: (slug: string, data: { title: string; content: string; images?: string[]; is_anonymous?: boolean }) =>
     api.post<ApiResponse<ZonePost>>(`/api/zones/${slug}/posts`, data),
   updateStatus: (slug: string, postId: number, status: string) =>
     api.put(`/api/zones/${slug}/posts/${postId}/status`, { status }),
