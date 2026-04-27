@@ -625,10 +625,10 @@ func (c *zoneAccessCache) get(zoneID, userID uint) (AccessDecision, bool) {
 }
 
 func (c *zoneAccessCache) put(zoneID, userID uint, d AccessDecision) {
-	// Errors are not cached — they're usually transient and we want a retry
-	// to actually hit upstream. Need_reauth IS cached briefly so we don't
-	// spam core with refresh attempts on a revoked token.
-	if d.Status == AccessStatusError {
+	// Don't cache transitional or error states — the user may resolve them
+	// quickly (e.g. by re-authorizing Discord) and stale cache would block.
+	switch d.Status {
+	case AccessStatusError, AccessStatusNeedReauth, AccessStatusNeedLink:
 		return
 	}
 	c.mu.Lock()
