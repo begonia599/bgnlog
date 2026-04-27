@@ -669,8 +669,16 @@ func (s *ZoneService) RequestReauth(userToken, redirectURI string) (string, erro
 	if userToken == "" {
 		return "", ErrNoUserToken
 	}
-	// Request the full set of scopes any zone rule could need.
-	extraScopes := []string{scopeDiscordGuilds, scopeDiscordGuildsRead, scopeDiscordConnections}
+	// Only request scopes that are actually needed by existing zone rules.
+	zones, err := s.repo.List()
+	if err != nil {
+		return "", fmt.Errorf("list zones for scopes: %w", err)
+	}
+	var allRules []model.ZoneRule
+	for _, z := range zones {
+		allRules = append(allRules, z.Rules...)
+	}
+	extraScopes := requiredDiscordScopes(allRules)
 	client := s.platform.WithToken(userToken)
 	resp, err := client.Auth.OAuthBindAuthorize("discord", redirectURI, extraScopes...)
 	if err != nil {
