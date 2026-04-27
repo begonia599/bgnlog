@@ -699,7 +699,11 @@ func (s *ZoneService) RequestReauth(userToken, redirectURI string) (string, erro
 	// Unlink existing Discord binding first — the platform returns
 	// "already_bound" without re-running OAuth if the account is already
 	// linked, which prevents scope upgrades. Unlinking forces a fresh flow.
-	_ = client.Auth.UnlinkOAuth("discord")
+	if unlinkErr := client.Auth.UnlinkOAuth("discord"); unlinkErr != nil {
+		log.Printf("[zone-reauth] unlink failed (non-fatal): %v", unlinkErr)
+	} else {
+		log.Printf("[zone-reauth] unlink succeeded, proceeding to rebind")
+	}
 
 	resp, err := client.Auth.OAuthBindAuthorize("discord", redirectURI, extraScopes...)
 	if err != nil {
