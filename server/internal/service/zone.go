@@ -676,6 +676,8 @@ func (s *ZoneService) RequestReauth(userToken, redirectURI string) (string, erro
 		return "", ErrNoUserToken
 	}
 	// Only request scopes that are actually needed by existing zone rules.
+	// OAuthBindAuthorize expects *extra* scopes (identify is always the base),
+	// so we must filter it out to avoid confusing the platform.
 	zones, err := s.repo.List()
 	if err != nil {
 		return "", fmt.Errorf("list zones for scopes: %w", err)
@@ -684,7 +686,14 @@ func (s *ZoneService) RequestReauth(userToken, redirectURI string) (string, erro
 	for _, z := range zones {
 		allRules = append(allRules, z.Rules...)
 	}
-	extraScopes := requiredDiscordScopes(allRules)
+	allScopes := requiredDiscordScopes(allRules)
+	var extraScopes []string
+	for _, sc := range allScopes {
+		if sc != scopeDiscordIdentify {
+			extraScopes = append(extraScopes, sc)
+		}
+	}
+	log.Printf("[zone-reauth] extra_scopes=%v (from all=%v)", extraScopes, allScopes)
 	client := s.platform.WithToken(userToken)
 	resp, err := client.Auth.OAuthBindAuthorize("discord", redirectURI, extraScopes...)
 	if err != nil {
