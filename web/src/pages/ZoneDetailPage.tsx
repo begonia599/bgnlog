@@ -387,10 +387,12 @@ function AccessGate({
             return (
                 <GateCard
                     icon={<AlertCircle className="h-5 w-5 text-destructive" />}
-                    title="访问受限"
-                    description="你不满足该专区的访问条件："
+                    title={access.reason === 'no_rules_configured' ? '专区未开放' : '访问受限'}
+                    description={access.reason === 'no_rules_configured'
+                        ? '该专区尚未配置访问规则，暂时无法进入。'
+                        : '你不满足该专区的访问条件：'}
                 >
-                    {zone.rules && zone.rules.length > 0 && (
+                    {access.reason !== 'no_rules_configured' && zone.rules && zone.rules.length > 0 && (
                         <div className="text-left w-full max-w-sm mb-3 space-y-1">
                             {zone.rules.map(r => (
                                 <div key={r.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">

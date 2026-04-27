@@ -279,10 +279,10 @@ func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) 
 		log.Printf("[zone-access] zone=%d EARLY allowed reason=public", z.ID)
 		return AccessDecision{Status: AccessStatusAllowed, Reason: "public", EvaluatedAt: time.Now()}
 	}
-	// Gated but no rules — degenerate "any logged-in user" case.
+	// Gated but no rules configured — deny by default until admin adds rules.
 	if len(z.Rules) == 0 {
-		log.Printf("[zone-access] zone=%d EARLY allowed reason=no_rules", z.ID)
-		return AccessDecision{Status: AccessStatusAllowed, Reason: "no_rules", EvaluatedAt: time.Now()}
+		log.Printf("[zone-access] zone=%d EARLY denied reason=no_rules", z.ID)
+		return AccessDecision{Status: AccessStatusDenied, Reason: "no_rules_configured", EvaluatedAt: time.Now()}
 	}
 
 	if cached, ok := s.cache.get(z.ID, userID); ok {
