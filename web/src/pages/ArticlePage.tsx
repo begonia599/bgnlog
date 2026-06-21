@@ -3,10 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { articleApi, commentApi } from '@/api'
 import type { Article, Comment } from '@/types'
 import { ArticleContent } from '@/components/article/ArticleContent'
+import { ArticleToc } from '@/components/article/ArticleToc'
 import { CommentList } from '@/components/comment/CommentList'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/utils/date'
+import { readingMinutes } from '@/utils/readingTime'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { Pencil, Trash2 } from 'lucide-react'
@@ -85,6 +87,7 @@ export default function ArticlePage() {
       transition={{ duration: 0.5 }}
       className="mx-auto max-w-2xl px-6 py-20"
     >
+      <ArticleToc content={article.content} />
       <article>
         <motion.header
           initial={{ opacity: 0, y: 20 }}
@@ -145,6 +148,8 @@ export default function ArticlePage() {
             )}
             <span className="text-border">·</span>
             <span>{article.view_count} 次阅读</span>
+            <span className="text-border">·</span>
+            <span>约 {readingMinutes(article.content)} 分钟</span>
           </div>
 
           {article.tags && article.tags.length > 0 && (
