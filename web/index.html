@@ -4,24 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="海棠小栈 — 思考、记录、分享" />
-    <title>海棠小栈</title>
+    <meta name="description" content="__OG_DESC__" />
+    <title>__OG_TITLE__</title>
 
-    <!-- Open Graph / 社交分享卡片。__OG_ORIGIN__ 由后端按请求 Host 注入为绝对来源
-         (如 https://example.com);未注入时(开发环境)爬虫不会访问,无影响。 -->
-    <meta property="og:type" content="website" />
+    <!-- Open Graph / 社交分享卡片。__OG_* 占位由后端按请求注入:站点级页面用站点
+         默认值,文章页(/article/:slug)注入该文标题/摘要/封面。未注入时(开发环境)
+         爬虫不会访问,无影响。 -->
+    <meta property="og:type" content="__OG_TYPE__" />
     <meta property="og:site_name" content="海棠小栈" />
-    <meta property="og:title" content="海棠小栈" />
-    <meta property="og:description" content="海棠小栈 — 思考、记录、分享" />
+    <meta property="og:title" content="__OG_TITLE__" />
+    <meta property="og:description" content="__OG_DESC__" />
     <meta property="og:locale" content="zh_CN" />
-    <meta property="og:url" content="__OG_ORIGIN__/" />
-    <meta property="og:image" content="__OG_ORIGIN__/logo.png" />
+    <meta property="og:url" content="__OG_URL__" />
+    <meta property="og:image" content="__OG_IMAGE__" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="海棠小栈" />
-    <meta name="twitter:description" content="海棠小栈 — 思考、记录、分享" />
-    <meta name="twitter:image" content="__OG_ORIGIN__/logo.png" />
+    <meta name="twitter:title" content="__OG_TITLE__" />
+    <meta name="twitter:description" content="__OG_DESC__" />
+    <meta name="twitter:image" content="__OG_IMAGE__" />
+    __OG_JSONLD__
   </head>
   <body>
     <div id="root"></div>

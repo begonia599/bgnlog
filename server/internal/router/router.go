@@ -4,6 +4,9 @@ import (
 	"blog-server/internal/config"
 	"blog-server/internal/handler"
 	"blog-server/internal/middleware"
+	"blog-server/internal/pkg"
+	"encoding/json"
+	"html"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -58,9 +61,14 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		authGroup.POST("/oauth/exchange", h.Auth.OAuthExchange)
 	}
 
+	// SEO / syndication (public, absolute URLs derived from request Host)
+	r.GET("/feed.xml", h.Article.Feed)
+	r.GET("/notes.xml", h.Article.NotesFeed)
+	r.GET("/sitemap.xml", h.Article.Sitemap)
+	r.GET("/robots.txt", h.Article.Robots)
+
 	api := r.Group("/api")
-	{
-		// Articles
+	{		// Articles
 		api.GET("/articles", auth.OptionalAuth(), h.Article.List)
 		api.GET("/articles/search", h.Article.Search)
 		api.GET("/articles/drafts", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.article", "read"), h.Article.ListDrafts)
@@ -135,52 +143,107 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 			}
 
 			// For SPA: serve index.html for all non-API/non-file routes,
-			// injecting the absolute origin so Open Graph tags resolve to
-			// real URLs (auto-detected from the request — no hardcoded domain).
-			serveIndexWithOG(c, indexPath)
+			// filling Open Graph tags. Article pages get per-article metadata;
+			// everything else gets site-level defaults. Absolute URLs are
+			// derived from the request (no hardcoded domain).
+			origin := pkg.RequestOrigin(c)
+			meta := defaultMeta(origin, requestPath)
+			if slug, ok := strings.CutPrefix(requestPath, "/article/"); ok && slug != "" && !strings.Contains(slug, "/") {
+				if title, desc, cover, pub, found := h.Article.MetaBySlug(slug); found {
+					meta = articleMeta(origin, slug, title, desc, cover, pub)
+				}
+			}
+			serveIndexWithOG(c, indexPath, meta)
 		})
 		r.Static("/assets", filepath.Join(staticDir, "assets"))
 		r.StaticFile("/favicon.ico", filepath.Join(staticDir, "favicon.ico"))
 	}
 }
 
-// serveIndexWithOG serves the SPA index.html, replacing the __OG_ORIGIN__
-// placeholder with the absolute request origin (scheme://host) so Open Graph
-// and Twitter Card tags carry real, absolute URLs for social crawlers. The
-// origin is derived from the request itself, so it adapts to whatever domain
-// the site is deployed on — no hardcoded domain needed.
-func serveIndexWithOG(c *gin.Context, indexPath string) {
+// ogMeta holds the Open Graph / Twitter values injected into index.html.
+type ogMeta struct {
+	Type   string
+	Title  string
+	Desc   string
+	URL    string
+	Image  string
+	JSONLD string // raw <script> block (already serialized), empty for non-articles
+}
+
+const (
+	defaultTitle = "海棠小栈"
+	defaultDesc  = "海棠小栈 — 思考、记录、分享"
+)
+
+// defaultMeta returns site-level Open Graph values for any non-article page.
+func defaultMeta(origin, path string) ogMeta {
+	return ogMeta{
+		Type:  "website",
+		Title: defaultTitle,
+		Desc:  defaultDesc,
+		URL:   origin + path,
+		Image: origin + "/logo.png",
+	}
+}
+
+// articleMeta returns per-article Open Graph values plus a JSON-LD BlogPosting.
+func articleMeta(origin, slug, title, desc, cover string, pub *time.Time) ogMeta {
+	image := origin + "/logo.png"
+	if cover != "" {
+		if strings.HasPrefix(cover, "http://") || strings.HasPrefix(cover, "https://") {
+			image = cover
+		} else {
+			image = origin + cover
+		}
+	}
+	if desc == "" {
+		desc = defaultDesc
+	}
+	url := origin + "/article/" + slug
+
+	ld := map[string]any{
+		"@context":    "https://schema.org",
+		"@type":       "BlogPosting",
+		"headline":    title,
+		"description": desc,
+		"url":         url,
+		"image":       image,
+	}
+	if pub != nil {
+		ld["datePublished"] = pub.Format(time.RFC3339)
+	}
+	// encoding/json escapes <, >, & to \u00xx, so this is safe inside <script>.
+	b, _ := json.Marshal(ld)
+
+	return ogMeta{
+		Type:   "article",
+		Title:  title,
+		Desc:   desc,
+		URL:    url,
+		Image:  image,
+		JSONLD: `<script type="application/ld+json">` + string(b) + `</script>`,
+	}
+}
+
+// serveIndexWithOG serves the SPA index.html with its __OG_* placeholders
+// filled. Attribute values are HTML-escaped; the JSON-LD block is injected raw.
+// All URLs are absolute (origin derived from the request), so the site adapts
+// to whatever domain it is deployed on — no hardcoded domain needed.
+func serveIndexWithOG(c *gin.Context, indexPath string, meta ogMeta) {
 	data, err := os.ReadFile(indexPath)
 	if err != nil {
 		c.File(indexPath) // fall back to plain serving
 		return
 	}
 
-	scheme := "http"
-	if proto := firstHeaderValue(c.Request.Header.Get("X-Forwarded-Proto")); proto != "" {
-		scheme = proto
-	} else if c.Request.TLS != nil {
-		scheme = "https"
-	}
-
-	host := c.Request.Host
-	if fwd := firstHeaderValue(c.Request.Header.Get("X-Forwarded-Host")); fwd != "" {
-		host = fwd
-	}
-
-	origin := scheme + "://" + host
-	html := strings.ReplaceAll(string(data), "__OG_ORIGIN__", origin)
-	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
-}
-
-// firstHeaderValue returns the first value of a possibly comma-separated
-// proxy header (e.g. "https,http" -> "https"), trimmed of surrounding space.
-func firstHeaderValue(v string) string {
-	if v == "" {
-		return ""
-	}
-	if i := strings.IndexByte(v, ','); i >= 0 {
-		v = v[:i]
-	}
-	return strings.TrimSpace(v)
+	repl := strings.NewReplacer(
+		"__OG_TYPE__", html.EscapeString(meta.Type),
+		"__OG_TITLE__", html.EscapeString(meta.Title),
+		"__OG_DESC__", html.EscapeString(meta.Desc),
+		"__OG_URL__", html.EscapeString(meta.URL),
+		"__OG_IMAGE__", html.EscapeString(meta.Image),
+		"__OG_JSONLD__", meta.JSONLD,
+	)
+	out := repl.Replace(string(data))
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(out))
 }
