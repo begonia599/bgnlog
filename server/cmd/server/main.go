@@ -129,7 +129,14 @@ func registerBlogPermissions(plat *sdk.Client) {
 		{Resource: "tag", Actions: []string{"create", "delete"}, Description: "Article tags"},
 		{Resource: "zone", Actions: []string{"create", "read", "update", "delete"}, Description: "Gated content zones"},
 	}
-	if err := plat.Permission.RegisterPermissions("blog", defs); err != nil {
+	// Default role grants applied idempotently on every registration, so a
+	// fresh platform database needs no manual permission assignment. Admins
+	// are superusers on the platform side, so only non-admin grants are
+	// declared here. Regular users may post comments.
+	grants := []sdk.RoleGrant{
+		{Role: "user", Resource: "comment", Action: "create"},
+	}
+	if err := plat.Permission.RegisterPermissions("blog", defs, grants...); err != nil {
 		log.Printf("Warning: failed to register blog permissions: %v", err)
 	} else {
 		log.Println("Blog permissions registered with platform")

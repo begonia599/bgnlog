@@ -108,6 +108,15 @@ func RequirePermission(plat *sdk.Client, object, action string) gin.HandlerFunc 
 			return
 		}
 
+		// Admins are superusers: authorize locally from the verified token
+		// instead of a network round-trip to the platform. Mirrors the
+		// platform-side superuser rule and keeps admin writes working even if
+		// the central permission service is degraded or unreachable.
+		if role, ok := c.Get("role"); ok && role == "admin" {
+			c.Next()
+			return
+		}
+
 		allowed, err := plat.Permission.CheckPermission(userID.(uint), object, action)
 		if err != nil {
 			pkg.Error(c, http.StatusBadGateway, "permission check failed")
