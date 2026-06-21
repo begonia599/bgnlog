@@ -69,7 +69,7 @@ export default function ZoneDetailPage() {
 
     if (loading) {
         return (
-            <div className="mx-auto max-w-3xl px-6 py-20 flex justify-center">
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 py-20 flex justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
         )
@@ -80,7 +80,7 @@ export default function ZoneDetailPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mx-auto max-w-3xl px-6 py-20 text-center"
+                className="mx-auto max-w-3xl px-4 sm:px-6 py-20 text-center"
             >
                 <h1 className="text-xl font-bold mb-2">专区不存在</h1>
                 <p className="text-sm text-muted-foreground mb-6">该专区可能已被删除或链接无效</p>
@@ -99,7 +99,7 @@ export default function ZoneDetailPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mx-auto max-w-3xl px-6 py-20"
+            className="mx-auto max-w-3xl px-4 sm:px-6 py-20"
         >
             {/* back link */}
             <Link

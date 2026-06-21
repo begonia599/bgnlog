@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-border/30 dark:border-border/20">
-      <div className="mx-auto max-w-3xl px-6 py-16">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-16">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
           {/* Nav links */}
           <nav className="flex items-center gap-6 text-sm text-muted-foreground/70">

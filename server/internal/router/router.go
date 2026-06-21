@@ -4,8 +4,10 @@ import (
 	"blog-server/internal/config"
 	"blog-server/internal/handler"
 	"blog-server/internal/middleware"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/begonia599/myplatform/sdk"
@@ -124,6 +126,7 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 	// In release mode, serve static frontend files
 	if cfg.Server.Mode == "release" {
 		staticDir := "static"
+		indexPath := filepath.Join(staticDir, "index.html")
 		r.NoRoute(func(c *gin.Context) {
 			requestPath := c.Request.URL.Path
 
@@ -134,10 +137,53 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 				return
 			}
 
-			// For SPA: serve index.html for all non-API/non-file routes
-			c.File(filepath.Join(staticDir, "index.html"))
+			// For SPA: serve index.html for all non-API/non-file routes,
+			// injecting the absolute origin so Open Graph tags resolve to
+			// real URLs (auto-detected from the request — no hardcoded domain).
+			serveIndexWithOG(c, indexPath)
 		})
 		r.Static("/assets", filepath.Join(staticDir, "assets"))
 		r.StaticFile("/favicon.ico", filepath.Join(staticDir, "favicon.ico"))
 	}
+}
+
+// serveIndexWithOG serves the SPA index.html, replacing the __OG_ORIGIN__
+// placeholder with the absolute request origin (scheme://host) so Open Graph
+// and Twitter Card tags carry real, absolute URLs for social crawlers. The
+// origin is derived from the request itself, so it adapts to whatever domain
+// the site is deployed on — no hardcoded domain needed.
+func serveIndexWithOG(c *gin.Context, indexPath string) {
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		c.File(indexPath) // fall back to plain serving
+		return
+	}
+
+	scheme := "http"
+	if proto := firstHeaderValue(c.Request.Header.Get("X-Forwarded-Proto")); proto != "" {
+		scheme = proto
+	} else if c.Request.TLS != nil {
+		scheme = "https"
+	}
+
+	host := c.Request.Host
+	if fwd := firstHeaderValue(c.Request.Header.Get("X-Forwarded-Host")); fwd != "" {
+		host = fwd
+	}
+
+	origin := scheme + "://" + host
+	html := strings.ReplaceAll(string(data), "__OG_ORIGIN__", origin)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+// firstHeaderValue returns the first value of a possibly comma-separated
+// proxy header (e.g. "https,http" -> "https"), trimmed of surrounding space.
+func firstHeaderValue(v string) string {
+	if v == "" {
+		return ""
+	}
+	if i := strings.IndexByte(v, ','); i >= 0 {
+		v = v[:i]
+	}
+	return strings.TrimSpace(v)
 }

@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react'
 import { SearchBar } from '@/components/common/SearchBar'
 import { motion, useMotionValueEvent, useScroll, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Sun, Moon, Search, X, UserCircle, ChevronDown } from 'lucide-react'
+import { Sun, Moon, Search, X, UserCircle, ChevronDown, Menu } from 'lucide-react'
 
 const navItems = [
   { label: '首页', path: '/' },
@@ -36,6 +36,7 @@ export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const [showSearch, setShowSearch] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [visible, setVisible] = useState(true)
   const [scrolled, setScrolled] = useState(false)
   const { scrollY } = useScroll()
@@ -60,16 +61,32 @@ export function Header() {
         e.preventDefault()
         setShowSearch((s) => !s)
       }
-      if (e.key === 'Escape') setShowSearch(false)
+      if (e.key === 'Escape') {
+        setShowSearch(false)
+        setMobileMenuOpen(false)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
     return location.pathname.startsWith(path)
   }
+
+  // Run an action (navigate / logout) then close the mobile menu.
+  const handleMobileAction = (action: () => void) => {
+    action()
+    setMobileMenuOpen(false)
+  }
+  const mobileItemClass =
+    'text-left rounded-xl px-4 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors'
 
   return (
     <>
@@ -99,44 +116,46 @@ export function Header() {
             <span className="text-sm font-serif font-semibold tracking-wide hidden sm:inline">海棠小栈</span>
           </Link>
 
-          <span className="h-4 w-px bg-border/50 mx-0.5" />
+          <span className="h-4 w-px bg-border/50 mx-0.5 hidden md:inline-block" />
 
-          {/* Nav items */}
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                'rounded-full px-3 py-1.5 text-sm transition-colors duration-200',
-                isActive(item.path)
-                  ? 'text-foreground font-medium'
-                  : 'text-muted-foreground/70 hover:text-foreground',
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {/* Nav items — desktop only */}
+          <div className="hidden md:flex items-center gap-0.5">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-sm transition-colors duration-200',
+                  isActive(item.path)
+                    ? 'text-foreground font-medium'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
 
-          {/* More dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={cn(
-                'flex items-center gap-0.5 rounded-full px-3 py-1.5 text-sm',
-                'text-muted-foreground/70 hover:text-foreground transition-colors duration-200',
-                'outline-none',
-              )}
-            >
-              更多
-              <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-32 mt-2">
-              {moreItems.map((item) => (
-                <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
-                  {item.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* More dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  'flex items-center gap-0.5 rounded-full px-3 py-1.5 text-sm',
+                  'text-muted-foreground/70 hover:text-foreground transition-colors duration-200',
+                  'outline-none',
+                )}
+              >
+                更多
+                <ChevronDown className="h-3 w-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-32 mt-2">
+                {moreItems.map((item) => (
+                  <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <div className="mx-0.5 h-4 w-px bg-border/60" />
 
@@ -174,9 +193,9 @@ export function Header() {
             </AnimatePresence>
           </Button>
 
+          {/* User + login — desktop only */}
+          <div className="hidden md:flex items-center">
           <div className="mx-0.5 h-4 w-px bg-border/60" />
-
-          {/* User */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -237,6 +256,18 @@ export function Header() {
               登录
             </Link>
           )}
+          </div>
+
+          {/* Hamburger — mobile only */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            aria-label="菜单"
+            aria-expanded={mobileMenuOpen}
+            className="md:hidden flex items-center justify-center rounded-full h-8 w-8 ml-0.5 text-muted-foreground/80 hover:text-foreground transition-colors outline-none"
+          >
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
         </nav>
       </motion.header>
 
@@ -278,6 +309,96 @@ export function Header() {
                     setShowSearch(false)
                   }}
                 />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 md:hidden"
+          >
+            <div
+              className="absolute inset-0 bg-background/40 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.96 }}
+              transition={{ type: 'spring' as const, stiffness: 400, damping: 30 }}
+              className="absolute left-4 right-4 top-20 mx-auto max-w-xs"
+            >
+              <div className="rounded-2xl bg-card/95 backdrop-blur-md p-2 ring-1 ring-border/50 shadow-xl">
+                <nav className="flex flex-col">
+                  {[...navItems, ...moreItems].map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        'rounded-xl px-4 py-2.5 text-sm transition-colors',
+                        isActive(item.path)
+                          ? 'bg-secondary text-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                <div className="my-2 h-px bg-border/50" />
+
+                {user ? (
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 px-4 py-2">
+                      <Avatar className="h-6 w-6">
+                        {user.avatar_url && <AvatarImage src={user.avatar_url} />}
+                        <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                          {user.username[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="leading-tight">
+                        <p className="text-sm font-medium">{user.nickname || user.username}</p>
+                        <p className="text-xs text-muted-foreground">{user.role}</p>
+                      </div>
+                    </div>
+                    <button className={mobileItemClass} onClick={() => handleMobileAction(() => navigate('/profile'))}>
+                      个人资料
+                    </button>
+                    {isEditor && (
+                      <button className={mobileItemClass} onClick={() => handleMobileAction(() => navigate('/editor'))}>
+                        写文章
+                      </button>
+                    )}
+                    {isEditor && (
+                      <button className={mobileItemClass} onClick={() => handleMobileAction(() => navigate('/drafts'))}>
+                        草稿箱
+                      </button>
+                    )}
+                    {user.role === 'admin' && (
+                      <button className={mobileItemClass} onClick={() => handleMobileAction(() => navigate('/admin'))}>
+                        管理
+                      </button>
+                    )}
+                    <button className={mobileItemClass} onClick={() => handleMobileAction(() => logout())}>
+                      退出登录
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="block rounded-xl px-4 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors"
+                  >
+                    登录
+                  </Link>
+                )}
               </div>
             </motion.div>
           </motion.div>

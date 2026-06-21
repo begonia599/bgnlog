@@ -1,6 +1,9 @@
 # Stage 1: Build frontend
 FROM node:22-alpine AS frontend
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pin pnpm to match the version the lockfile + package.json config target.
+# `pnpm@latest` floats (now 11.x) and stops honoring package.json's
+# pnpm.onlyBuiltDependencies, breaking `--frozen-lockfile` installs.
+RUN corepack enable && corepack prepare pnpm@10.31.0 --activate
 WORKDIR /build
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile

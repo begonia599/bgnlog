@@ -53,7 +53,7 @@ export default function ZonePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mx-auto max-w-3xl px-6 py-20"
+            className="mx-auto max-w-3xl px-4 sm:px-6 py-20"
         >
             {/* header */}
             <div className="flex items-end justify-between mb-12">

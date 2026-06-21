@@ -55,7 +55,7 @@ export default function HomePage() {
     <>
       {isFirstPage && <Hero />}
 
-      <div className="mx-auto max-w-3xl px-6 py-16">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-16">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
