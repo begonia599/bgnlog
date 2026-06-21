@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { articleApi, categoryApi, tagApi } from '@/api'
 import type { Category, Tag } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,14 @@ import MDEditor from '@uiw/react-md-editor'
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const isEdit = !!id
+
+  // New posts pick their kind from ?type=; editing keeps the article's own kind.
+  const [articleType, setArticleType] = useState<'post' | 'note'>(
+    searchParams.get('type') === 'note' ? 'note' : 'post'
+  )
+  const typeLabel = articleType === 'note' ? '手记' : '文稿'
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -42,6 +49,7 @@ export default function EditorPage() {
         setCoverFileId(a.cover_file_id)
         setCategoryId(a.category_id)
         setSelectedTagIds(a.tags?.map((t) => t.id) || [])
+        if (a.type) setArticleType(a.type)
       })
     }
   }, [id, isEdit])
@@ -59,6 +67,7 @@ export default function EditorPage() {
         category_id: categoryId,
         tag_ids: selectedTagIds,
         status,
+        type: articleType,
       }
 
       if (isEdit) {
@@ -67,7 +76,7 @@ export default function EditorPage() {
       } else {
         await articleApi.create(data)
       }
-      navigate('/')
+      navigate(articleType === 'note' ? '/notes' : '/posts')
     } catch (err) {
       console.error('Save failed:', err)
     } finally {
@@ -84,7 +93,7 @@ export default function EditorPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">{isEdit ? '编辑文章' : '写文章'}</h1>
+        <h1 className="text-2xl font-bold">{isEdit ? `编辑${typeLabel}` : `写${typeLabel}`}</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving}>
             保存草稿
@@ -100,7 +109,7 @@ export default function EditorPage() {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="文章标题"
+            placeholder={`${typeLabel}标题`}
             className="text-2xl font-semibold h-14 border-0 px-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
           />
         </div>

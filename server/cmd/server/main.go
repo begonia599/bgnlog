@@ -37,6 +37,12 @@ func main() {
 		log.Fatalf("Failed to migrate auxiliary tables: %v", err)
 	}
 
+	// Additive migration for the hand-managed articles table: distinguish
+	// long-form posts (文稿) from short notes (手记). Idempotent so it is safe
+	// on both fresh installs and existing databases.
+	db.Exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'post'")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_type ON articles(type)")
+
 	// Platform SDK
 	plat := sdk.New(&sdk.Config{
 		BaseURL: cfg.Platform.BaseURL,

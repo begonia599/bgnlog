@@ -21,8 +21,9 @@ func (h *ArticleHandler) List(c *gin.Context) {
 	p := pkg.GetPagination(c)
 	category := c.Query("category")
 	tag := c.Query("tag")
+	articleType := c.Query("type")
 
-	articles, total, err := h.svc.List(p, category, tag)
+	articles, total, err := h.svc.List(p, category, tag, articleType)
 	if err != nil {
 		pkg.Error(c, http.StatusInternalServerError, "failed to list articles")
 		return
@@ -146,13 +147,4 @@ func (h *ArticleHandler) Search(c *gin.Context) {
 
 	p.Total = total
 	pkg.Success(c, pkg.PaginatedResponse{Items: articles, Pagination: p})
-}
-
-func (h *ArticleHandler) Archives(c *gin.Context) {
-	archives, err := h.svc.GetArchives()
-	if err != nil {
-		pkg.Error(c, http.StatusInternalServerError, "failed to get archives")
-		return
-	}
-	pkg.Success(c, archives)
 }

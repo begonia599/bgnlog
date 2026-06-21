@@ -26,7 +26,6 @@ const navItems = [
 
 const moreItems = [
   { label: '友人', path: '/friends' },
-  { label: '归档', path: '/archives' },
   { label: '搜索', path: '/search' },
 ]
 

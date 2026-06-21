@@ -7,6 +7,7 @@ export interface Article {
   cover_image_url: string
   cover_file_id: number | null
   status: 'draft' | 'published'
+  type: 'post' | 'note'
   author_id: number
   author_name: string
   category_id: number | null
@@ -96,12 +97,6 @@ export interface PaginatedData<T> {
     page_size: number
     total: number
   }
-}
-
-export interface ArchiveItem {
-  year: number
-  month: number
-  count: number
 }
 
 // --- Zone ---

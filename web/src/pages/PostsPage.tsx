@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { articleApi, categoryApi, tagApi } from '@/api'
 import type { Article, Category, Tag } from '@/types'
 import { ArticleCard } from '@/components/article/ArticleCard'
 import { Pagination } from '@/components/common/Pagination'
+import { buttonVariants } from '@/components/ui/button'
+import { useAuth } from '@/contexts/AuthContext'
 import { motion } from 'framer-motion'
+import { PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function PostsPage() {
     const [searchParams, setSearchParams] = useSearchParams()
+    const { isAdmin } = useAuth()
     const page = parseInt(searchParams.get('page') || '1')
     const categoryFilter = searchParams.get('category') || ''
     const tagFilter = searchParams.get('tag') || ''
@@ -27,7 +31,7 @@ export default function PostsPage() {
     useEffect(() => {
         setLoading(true)
         articleApi
-            .list({ page, page_size: 10, category: categoryFilter, tag: tagFilter })
+            .list({ page, page_size: 10, category: categoryFilter, tag: tagFilter, type: 'post' })
             .then((res) => {
                 const data = res.data.data
                 setArticles(data.items || [])
@@ -54,10 +58,26 @@ export default function PostsPage() {
             transition={{ duration: 0.5 }}
             className="mx-auto max-w-3xl px-4 sm:px-6 py-20"
         >
-            <h1 className="text-2xl font-bold tracking-tight mb-2">文稿</h1>
-            <p className="text-sm text-muted-foreground/70 mb-12">
-                思考，记录，分享
-            </p>
+            <div className="mb-12 flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight mb-2">文稿</h1>
+                    <p className="text-sm text-muted-foreground/70">
+                        思考，记录，分享
+                    </p>
+                </div>
+                {isAdmin && (
+                    <Link
+                        to="/editor?type=post"
+                        className={cn(
+                            buttonVariants({ variant: 'outline', size: 'sm' }),
+                            'rounded-full gap-1.5 shrink-0',
+                        )}
+                    >
+                        <PenLine className="h-3.5 w-3.5" />
+                        写文稿
+                    </Link>
+                )}
+            </div>
 
             {/* Filters */}
             {(categories.length > 0 || tags.length > 0) && (

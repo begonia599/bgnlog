@@ -11,6 +11,7 @@ type Article struct {
 	CoverImageURL string     `gorm:"size:500" json:"cover_image_url"`
 	CoverFileID   *uint      `json:"cover_file_id"`
 	Status        string     `gorm:"size:20;default:draft;not null;index" json:"status"` // draft | published
+	Type          string     `gorm:"size:20;default:post;not null;index" json:"type"`    // post | note
 	AuthorID      uint       `gorm:"not null;index" json:"author_id"`
 	AuthorName    string     `gorm:"size:100;not null" json:"author_name"`
 	CategoryID    *uint      `gorm:"index" json:"category_id"`

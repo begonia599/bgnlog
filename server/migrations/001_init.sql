@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS articles (
     cover_image_url VARCHAR(500) DEFAULT '',
     cover_file_id INTEGER,
     status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    type VARCHAR(20) NOT NULL DEFAULT 'post',
     author_id INTEGER NOT NULL,
     author_name VARCHAR(100) NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS articles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
+CREATE INDEX IF NOT EXISTS idx_articles_type ON articles(type);
 CREATE INDEX IF NOT EXISTS idx_articles_author_id ON articles(author_id);
 CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
 CREATE INDEX IF NOT EXISTS idx_articles_search_vector ON articles USING GIN(search_vector);

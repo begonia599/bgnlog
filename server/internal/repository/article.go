@@ -15,13 +15,17 @@ func NewArticleRepository(db *gorm.DB) *ArticleRepository {
 	return &ArticleRepository{db: db}
 }
 
-func (r *ArticleRepository) List(p pkg.Pagination, categorySlug, tagSlug, status string) ([]model.Article, int64, error) {
+func (r *ArticleRepository) List(p pkg.Pagination, categorySlug, tagSlug, status, articleType string) ([]model.Article, int64, error) {
 	query := r.db.Model(&model.Article{})
 
 	if status != "" {
 		query = query.Where("articles.status = ?", status)
 	} else {
 		query = query.Where("articles.status = ?", "published")
+	}
+
+	if articleType != "" {
+		query = query.Where("articles.type = ?", articleType)
 	}
 
 	if categorySlug != "" {
@@ -121,37 +125,6 @@ func (r *ArticleRepository) Search(query string, p pkg.Pagination) ([]model.Arti
 		Find(&articles).Error
 
 	return articles, total, err
-}
-
-type ArchiveItem struct {
-	Year  int `json:"year"`
-	Month int `json:"month"`
-	Count int `json:"count"`
-}
-
-type ArchiveArticle struct {
-	model.Article
-}
-
-func (r *ArticleRepository) GetArchives() ([]ArchiveItem, error) {
-	var items []ArchiveItem
-	err := r.db.Model(&model.Article{}).
-		Select("EXTRACT(YEAR FROM published_at)::int AS year, EXTRACT(MONTH FROM published_at)::int AS month, COUNT(*) AS count").
-		Where("status = ? AND published_at IS NOT NULL", "published").
-		Group("year, month").
-		Order("year DESC, month DESC").
-		Find(&items).Error
-	return items, err
-}
-
-func (r *ArticleRepository) GetArticlesByYearMonth(year, month int) ([]model.Article, error) {
-	var articles []model.Article
-	err := r.db.Where("status = ? AND EXTRACT(YEAR FROM published_at) = ? AND EXTRACT(MONTH FROM published_at) = ?",
-		"published", year, month).
-		Select("id, title, slug, published_at").
-		Order("published_at DESC").
-		Find(&articles).Error
-	return articles, err
 }
 
 func (r *ArticleRepository) SlugExists(slug string) (bool, error) {

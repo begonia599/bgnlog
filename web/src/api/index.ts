@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, ArchiveItem, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision, ZonePost, ZonePostListResult, ZoneComment } from '@/types'
+import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision, ZonePost, ZonePostListResult, ZoneComment } from '@/types'
 
 // Auth
 export const authApi = {
@@ -45,7 +45,7 @@ export const authApi = {
 
 // Articles
 export const articleApi = {
-  list: (params?: { page?: number; page_size?: number; category?: string; tag?: string }) =>
+  list: (params?: { page?: number; page_size?: number; category?: string; tag?: string; type?: string }) =>
     api.get<ApiResponse<PaginatedData<Article>>>('/api/articles', { params }),
   search: (q: string, page = 1) =>
     api.get<ApiResponse<PaginatedData<Article>>>('/api/articles/search', { params: { q, page } }),
@@ -97,11 +97,6 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
-}
-
-// Archives
-export const archiveApi = {
-  list: () => api.get<ApiResponse<ArchiveItem[]>>('/api/archives'),
 }
 
 // Site Settings

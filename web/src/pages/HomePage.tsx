@@ -31,7 +31,7 @@ export default function HomePage() {
   useEffect(() => {
     setLoading(true)
     articleApi
-      .list({ page, page_size: 10, category: categoryFilter, tag: tagFilter })
+      .list({ page, page_size: 10, category: categoryFilter, tag: tagFilter, type: 'post' })
       .then((res) => {
         const data = res.data.data
         setArticles(data.items || [])

@@ -10,9 +10,6 @@ export function Footer() {
             <Link to="/" className="transition-colors hover:text-foreground">
               首页
             </Link>
-            <Link to="/archives" className="transition-colors hover:text-foreground">
-              归档
-            </Link>
             <Link to="/search" className="transition-colors hover:text-foreground">
               搜索
             </Link>

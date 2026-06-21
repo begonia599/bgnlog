@@ -9,7 +9,6 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import EditorPage from '@/pages/EditorPage'
 import SearchPage from '@/pages/SearchPage'
-import ArchivesPage from '@/pages/ArchivesPage'
 import DraftsPage from '@/pages/DraftsPage'
 import AdminPage from '@/pages/AdminPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -54,7 +53,6 @@ function AppRoutes() {
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/archives" element={<ArchivesPage />} />
         <Route
           path="/profile"
           element={

@@ -25,6 +25,7 @@ type CreateArticleInput struct {
 	CoverImageURL string `json:"cover_image_url"`
 	CoverFileID   *uint  `json:"cover_file_id"`
 	Status        string `json:"status"`
+	Type          string `json:"type"`
 	CategoryID    *uint  `json:"category_id"`
 	TagIDs        []uint `json:"tag_ids"`
 }
@@ -40,8 +41,8 @@ type UpdateArticleInput struct {
 	TagIDs        *[]uint `json:"tag_ids"`
 }
 
-func (s *ArticleService) List(p pkg.Pagination, category, tag string) ([]model.Article, int64, error) {
-	return s.articleRepo.List(p, category, tag, "published")
+func (s *ArticleService) List(p pkg.Pagination, category, tag, articleType string) ([]model.Article, int64, error) {
+	return s.articleRepo.List(p, category, tag, "published", articleType)
 }
 
 func (s *ArticleService) ListDrafts(p pkg.Pagination, userID uint, role string) ([]model.Article, int64, error) {
@@ -68,6 +69,11 @@ func (s *ArticleService) Create(input CreateArticleInput, authorID uint, authorN
 		status = "draft"
 	}
 
+	articleType := input.Type
+	if articleType != "note" {
+		articleType = "post" // default & guard against unknown values
+	}
+
 	var publishedAt *time.Time
 	if status == "published" {
 		now := time.Now()
@@ -82,6 +88,7 @@ func (s *ArticleService) Create(input CreateArticleInput, authorID uint, authorN
 		CoverImageURL: input.CoverImageURL,
 		CoverFileID:   input.CoverFileID,
 		Status:        status,
+		Type:          articleType,
 		AuthorID:      authorID,
 		AuthorName:    authorName,
 		CategoryID:    input.CategoryID,
@@ -179,12 +186,4 @@ func (s *ArticleService) Search(query string, p pkg.Pagination) ([]model.Article
 		return nil, 0, nil
 	}
 	return s.articleRepo.Search(tsQuery, p)
-}
-
-func (s *ArticleService) GetArchives() ([]repository.ArchiveItem, error) {
-	return s.articleRepo.GetArchives()
-}
-
-func (s *ArticleService) GetArticlesByYearMonth(year, month int) ([]model.Article, error) {
-	return s.articleRepo.GetArticlesByYearMonth(year, month)
 }

@@ -90,9 +90,6 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		api.POST("/upload", auth.AuthRequired(), h.Upload.Upload)
 		api.GET("/files/:id", h.Upload.FileProxy)
 
-		// Archives
-		api.GET("/archives", h.Article.Archives)
-
 		// Site settings
 		api.GET("/settings/hero", h.Setting.GetHero)
 		api.PUT("/settings/hero", auth.AuthRequired(), middleware.RequireRole("admin"), h.Setting.UpdateHero)
