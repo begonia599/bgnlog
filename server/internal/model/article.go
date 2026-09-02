@@ -18,6 +18,8 @@ type Article struct {
 	Category      *Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Tags          []Tag      `gorm:"many2many:article_tags" json:"tags,omitempty"`
 	ViewCount     int        `gorm:"default:0" json:"view_count"`
+	LikeCount     int64      `gorm:"-" json:"like_count"`
+	Liked         bool       `gorm:"-" json:"liked"`
 	PublishedAt   *time.Time `gorm:"index" json:"published_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`

@@ -29,6 +29,7 @@ type Handlers struct {
 	Zone     *handler.ZoneHandler
 	ZonePost *handler.ZonePostHandler
 	Stats    *handler.StatsHandler
+	Like     *handler.LikeHandler
 }
 
 func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk.Client, cfg *config.Config) {
@@ -88,6 +89,9 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		api.GET("/tags", h.Tag.List)
 		api.POST("/tags", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.tag", "create"), h.Tag.Create)
 		api.DELETE("/tags/:id", auth.AuthRequired(), middleware.RequirePermission(plat, "blog.tag", "delete"), h.Tag.Delete)
+
+		// Likes — any logged-in user may toggle; counts ride along on article responses.
+		api.POST("/articles/:slug/like", auth.AuthRequired(), h.Like.Toggle)
 
 		// Comments
 		api.GET("/articles/:slug/comments", h.Comment.List)

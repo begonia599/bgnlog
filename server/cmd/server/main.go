@@ -33,7 +33,7 @@ func main() {
 
 	// Auto-migrate tables owned by this binary (catalog tables managed by
 	// migrations live in /migrations).
-	if err := db.AutoMigrate(&model.SiteSetting{}, &model.Zone{}, &model.ZoneRule{}, &model.ZonePost{}, &model.ZoneComment{}, &model.SiteVisitDaily{}); err != nil {
+	if err := db.AutoMigrate(&model.SiteSetting{}, &model.Zone{}, &model.ZoneRule{}, &model.ZonePost{}, &model.ZoneComment{}, &model.SiteVisitDaily{}, &model.ArticleLike{}); err != nil {
 		log.Fatalf("Failed to migrate auxiliary tables: %v", err)
 	}
 
@@ -65,6 +65,7 @@ func main() {
 	zoneRepo := repository.NewZoneRepository(db)
 	zonePostRepo := repository.NewZonePostRepository(db)
 	visitRepo := repository.NewVisitRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
 
 	// Services
 	articleSvc := service.NewArticleService(articleRepo, tagRepo)
@@ -75,6 +76,7 @@ func main() {
 	zoneSvc := service.NewZoneService(zoneRepo, plat)
 	zonePostSvc := service.NewZonePostService(zonePostRepo, zoneRepo)
 	statsSvc := service.NewStatsService(visitRepo, settingRepo)
+	likeSvc := service.NewLikeService(likeRepo, articleRepo)
 
 	platformPublicURL := cfg.Platform.PublicURL
 	if platformPublicURL == "" {
@@ -83,7 +85,8 @@ func main() {
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(plat, platformPublicURL, settingRepo, db)
-	articleHandler := handler.NewArticleHandler(articleSvc)
+	articleHandler := handler.NewArticleHandler(articleSvc, likeSvc)
+	likeHandler := handler.NewLikeHandler(likeSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	tagHandler := handler.NewTagHandler(tagSvc)
 	commentHandler := handler.NewCommentHandler(commentSvc)
@@ -114,6 +117,7 @@ func main() {
 		Zone:     zoneHandler,
 		ZonePost: zonePostHandler,
 		Stats:    statsHandler,
+		Like:     likeHandler,
 	}, authMiddleware, plat, cfg)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

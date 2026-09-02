@@ -4,6 +4,7 @@ import { articleApi, commentApi } from '@/api'
 import type { Article, Comment } from '@/types'
 import { ArticleContent } from '@/components/article/ArticleContent'
 import { ArticleToc } from '@/components/article/ArticleToc'
+import { LikeButton } from '@/components/article/LikeButton'
 import { CommentList } from '@/components/comment/CommentList'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,9 @@ export default function ArticlePage() {
   const { user, isEditor, isAdmin } = useAuth()
   const [article, setArticle] = useState<Article | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
-  const [loading, setLoading] = useState(true)
+  // Loading is derived: we are loading until the fetched slug matches the URL.
+  const [loadedSlug, setLoadedSlug] = useState<string | undefined>()
+  const loading = slug !== loadedSlug
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -28,10 +31,20 @@ export default function ArticlePage() {
 
   useEffect(() => {
     if (!slug) return
-    setLoading(true)
+    let cancelled = false
     articleApi.getBySlug(slug)
-      .then((res) => setArticle(res.data.data))
-      .finally(() => setLoading(false))
+      .then((res) => {
+        if (!cancelled) setArticle(res.data.data)
+      })
+      .catch(() => {
+        if (!cancelled) setArticle(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadedSlug(slug)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [slug])
 
   const fetchComments = useCallback(() => {
@@ -186,6 +199,14 @@ export default function ArticlePage() {
           <ArticleContent content={article.content} />
         </motion.div>
       </article>
+
+      <LikeButton
+        key={article.id}
+        slug={article.slug}
+        count={article.like_count ?? 0}
+        liked={article.liked ?? false}
+        canLike={!!user}
+      />
 
       <Separator className="my-16" />
 

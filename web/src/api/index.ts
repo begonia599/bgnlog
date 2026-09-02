@@ -59,6 +59,8 @@ export const articleApi = {
     api.put<ApiResponse<Article>>(`/api/articles/${id}`, data),
   delete: (id: number) =>
     api.delete(`/api/articles/${id}`),
+  toggleLike: (slug: string) =>
+    api.post<ApiResponse<{ liked: boolean; like_count: number }>>(`/api/articles/${slug}/like`),
 }
 
 // Categories

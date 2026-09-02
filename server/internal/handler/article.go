@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"blog-server/internal/model"
 	"blog-server/internal/pkg"
 	"blog-server/internal/service"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -10,11 +12,27 @@ import (
 )
 
 type ArticleHandler struct {
-	svc *service.ArticleService
+	svc   *service.ArticleService
+	likes *service.LikeService
 }
 
-func NewArticleHandler(svc *service.ArticleService) *ArticleHandler {
-	return &ArticleHandler{svc: svc}
+func NewArticleHandler(svc *service.ArticleService, likes *service.LikeService) *ArticleHandler {
+	return &ArticleHandler{svc: svc, likes: likes}
+}
+
+// decorateLikes fills like_count / liked for the current viewer. Failures are
+// logged, not surfaced: the article itself is more important than its counter.
+func (h *ArticleHandler) decorateLikes(c *gin.Context, articles []model.Article) {
+	if h.likes == nil || len(articles) == 0 {
+		return
+	}
+	ptrs := make([]*model.Article, len(articles))
+	for i := range articles {
+		ptrs[i] = &articles[i]
+	}
+	if err := h.likes.Decorate(c.GetUint("user_id"), ptrs...); err != nil {
+		log.Printf("[likes] decorate failed: %v", err)
+	}
 }
 
 func (h *ArticleHandler) List(c *gin.Context) {
@@ -28,6 +46,7 @@ func (h *ArticleHandler) List(c *gin.Context) {
 		pkg.Error(c, http.StatusInternalServerError, "failed to list articles")
 		return
 	}
+	h.decorateLikes(c, articles)
 
 	p.Total = total
 	pkg.Success(c, pkg.PaginatedResponse{Items: articles, Pagination: p})
@@ -68,6 +87,12 @@ func (h *ArticleHandler) GetBySlug(c *gin.Context) {
 
 	// Increment view count asynchronously
 	go h.svc.IncrementView(article.ID)
+
+	if h.likes != nil {
+		if err := h.likes.Decorate(c.GetUint("user_id"), article); err != nil {
+			log.Printf("[likes] decorate failed: %v", err)
+		}
+	}
 
 	pkg.Success(c, article)
 }

@@ -14,6 +14,8 @@ export interface Article {
   category: Category | null
   tags: Tag[]
   view_count: number
+  like_count: number
+  liked: boolean
   published_at: string | null
   created_at: string
   updated_at: string
