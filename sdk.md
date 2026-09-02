@@ -89,7 +89,7 @@ func main() {
 
 客户端内置线程安全（`sync.RWMutex`）的 Token 管理。每次发起需鉴权的请求前会检查：若 Access Token 为空、或**距过期不足 10 秒**，则自动用 Refresh Token 换新。
 
-自动存储 Token 的入口只有三个：`Auth.Login()`、`Auth.OAuthExchange()`、`Client.SetTokens()`。
+会写入 Token 的公开入口有四个：`Auth.Login()`、`Auth.OAuthExchange()`、`Auth.Refresh()`、`Client.SetTokens()`；内部自动刷新成功后也会覆盖存储，`Auth.Logout()` 则清空。
 
 ```go
 // 登录后 Token 自动存储，后续调用无需手动携带
@@ -100,7 +100,7 @@ me, _ := client.Auth.Me()
 client.SetTokens(savedAccess, savedRefresh, 3600)
 ```
 
-若既无 Access Token 也无 Refresh Token，需鉴权的调用会直接返回：
+若 Access Token 缺失、已过期或将在 10 秒内过期，且没有 Refresh Token，需鉴权的调用会在本地直接返回（不发请求）：
 
 ```go
 &APIError{StatusCode: 401, Message: "not authenticated, call Login first"}
@@ -116,7 +116,7 @@ userClient := platformClient.WithToken(userAccessToken)
 img, err := userClient.ImageBed.UploadReader("avatar.png", reader)
 ```
 
-> ⚠️ **派生客户端不会自动刷新 Token**（内部把过期时间设为公元 9999 年以跳过刷新逻辑）。它没有 Refresh Token，Token 过期时平台会直接返回 401，需由调用方处理。
+> ⚠️ **派生客户端不会自动刷新 Token**（内部把过期时间设为公元 9999 年以跳过刷新逻辑）。它没有 Refresh Token，Token 过期时平台会直接返回 401，需由调用方处理。但它仍是普通 `*Client`：一旦在它上面 `SetTokens()` 写入了非空 Refresh Token（账号合并示例就是这么做的），它就会开始自动刷新。
 
 ### 错误处理
 
@@ -143,6 +143,8 @@ if errors.As(err, &apiErr) && apiErr.StatusCode == 401 {
 
 网络层、序列化层的错误则以 `sdk: <阶段>: <原因>` 的形式包装原始 error，可用 `errors.Unwrap` 取出。
 
+例外：自动刷新失败时（Refresh Token 失效返回 `401`，或网络错误），错误被包装为 `sdk: auto-refresh failed: <原始错误>`，不是裸的 `*APIError`。因此取 `*APIError` 要用 `errors.As`，不要做类型断言。
+
 ---
 
 ## Auth 服务
@@ -157,7 +159,7 @@ func (a *AuthService) Register(username, password, role string) (*RegisterRespon
 
 `POST /auth/register` · 免鉴权
 
-创建新账号。`role` 传空字符串时不发送该字段，由平台使用默认角色。
+创建新账号。`role` 传空字符串时不发送该字段，由平台使用默认角色 `user`；传 `admin` 会被平台静默降级为 `user`。`403` 平台已关闭注册，`409` 用户名已存在。
 
 <sub>调用位置：`server/internal/handler/auth.go`</sub>
 
@@ -216,6 +218,8 @@ func (a *AuthService) Verify(token string) (*VerifyResponse, error)
 `POST /auth/verify` · 免鉴权（服务间调用）
 
 校验任意 Token 并返回其归属用户。**这是业务服务鉴权中间件的标准入口**——不需要客户端自身处于登录态。
+
+空 token 平台返回 `400`，无效或过期返回 `401`，用户被禁用返回 `403`；三种情况 SDK 都返回 `*APIError` 且 `resp` 为 `nil`，所以要先判 `err`。`resp.Valid` 在 `err == nil` 时恒为 `true`。
 
 ```go
 resp, err := client.Auth.Verify(tokenFromHeader)
@@ -291,7 +295,7 @@ func (a *AuthService) OAuthAuthorize(provider, redirectURI string) (*OAuthAuthor
 
 `GET /auth/oauth/{provider}?redirect_uri={redirectURI}` · 免鉴权
 
-返回 `{AuthURL string}`，把用户重定向过去即可。`redirectURI` 是授权完成后回跳的业务前端地址。
+返回 `{AuthURL string}`，把用户重定向过去即可。`redirectURI` 是授权完成后回跳的业务前端地址，成功时带 `?exchange_code=...`，平台侧换 token 或拉用户信息失败时带 `?error=oauth_failed`，前端要先查 `error`。用户在第三方页面取消授权时平台回调直接返回 `400` 纯文本，不会回跳。SDK 不对 `redirectURI` 做 URL 编码，若它自带查询参数请先 `url.QueryEscape`。
 
 <sub>调用位置：`server/internal/handler/auth.go`</sub>
 
@@ -326,7 +330,7 @@ resp, err := userClient.Auth.OAuthBindAuthorize(
 )
 ```
 
-回跳地址上会带 `?bind_result=` 参数，取值为 `success` / `already_bound` / `conflict` / `oauth_failed` / `internal_error`。
+回跳地址上会带 `?bind_result=` 参数，取值为 `success` / `already_bound` / `conflict` / `oauth_failed` / `internal_error`。注意两点：`conflict` 也包括「当前用户在该 provider 下已绑了另一个账号」；若该第三方账号原属于一个 OAuth-only 占位用户，平台会把占位用户**隐式合并**进当前用户并返回 `success`，且不告知被合并的 ID，业务库里的旧 `user_id` 需用 `GetCanonicalUser` 解析。
 
 <sub>调用位置：`server/internal/handler/auth.go`、`server/internal/service/zone.go`</sub>
 
@@ -371,6 +375,8 @@ func (a *AuthService) UnlinkOAuth(provider string) error
 ```
 
 `DELETE /auth/oauth/accounts/{provider}` · 需鉴权
+
+无密码且这是唯一 OAuth 账号时拒绝（`400`，提示先设密码）；解绑未绑定的 provider 同样是 `400`（`oauth account not found`），不是 `404`。
 
 <sub>调用位置：`server/internal/handler/auth.go`</sub>
 
@@ -548,7 +554,7 @@ func (p *PermissionService) SetDefaultPolicies(role string, policies []Policy) e
 
 `GET` / `PUT /api/permissions/defaults/{role}` · 需鉴权
 
-> `SetDefaultPolicies` 是**整体替换**语义，不是追加。
+> `SetDefaultPolicies` 是**整体替换**语义，不是追加。清空要传 `[]sdk.Policy{}`；传 `nil` 会序列化成 `"policies": null`，服务端校验失败返回 `400`。每项的 `Role` 会被路径中的 role 覆盖，可不填。
 
 ---
 
@@ -623,6 +629,8 @@ func (s *StorageService) Delete(id uint) error
 
 `DELETE /api/storage/files/{id}`
 
+只能删自己上传的文件；删他人文件需持有 `storage` / `delete` 权限（默认只有 admin），否则 `403`。
+
 ---
 
 ## ImageBed 服务
@@ -630,6 +638,8 @@ func (s *StorageService) Delete(id uint) error
 图床，相比 Storage 多了公开/私有可见性控制。除 `PublicURL` 外均需鉴权。
 
 > multipart 表单字段名为 **`image`**。
+
+> ⚠️ 四个接口除鉴权外还分别要求 `imagebed` 资源的 `upload` / `read` / `delete` / `update` 权限，而平台默认策略**没有给任何角色**授予这些权限，只有 admin / root 自动放行。普通用户要能上传头像，需要管理员 `AddPolicy("user", "imagebed", "upload")` 或写进默认角色策略，否则 `403`。此外 `Delete` / `ToggleVisibility` 只能操作本人图片，非 admin 动他人图片同样 `403`。
 
 #### Upload / UploadReader 🔹
 
@@ -640,7 +650,9 @@ func (s *ImageBedService) UploadReader(filename string, reader io.Reader) (*Imag
 
 `POST /api/imagebed/upload`
 
-`UploadReader` 会**按扩展名显式设置 part 的 Content-Type**，而不是让 multipart 默认写成 `application/octet-stream`。内置了 jpg/jpeg/png/gif/webp/svg/bmp/ico 的硬编码兜底表——因为 Alpine 容器没有 `/etc/mime.types`，`mime.TypeByExtension` 会返回空。
+`UploadReader` 会**按扩展名显式设置 part 的 Content-Type**，而不是让 multipart 默认写成 `application/octet-stream`。内置了 jpg/jpeg/png/gif/webp/svg/bmp/ico 的硬编码兜底表——因为 Alpine 容器没有 `/etc/mime.types`，`mime.TypeByExtension` 会返回空。`filename` 必须带这八种扩展名之一，否则服务端 `400`。
+
+新上传的图片**默认 `is_public = true`**（服务端硬编码，上传请求不接受可见性参数），任何人无需鉴权即可通过 `PublicURL(id)` 访问；需要私有的要在上传后立刻 `ToggleVisibility(id, false)`。
 
 <sub>调用位置：`server/internal/handler/auth.go`（头像上传）</sub>
 
