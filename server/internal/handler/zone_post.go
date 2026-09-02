@@ -38,10 +38,15 @@ func (h *ZonePostHandler) viewerAvatar(_ *gin.Context) string {
 	return ""
 }
 
-func (h *ZonePostHandler) isAdmin(c *gin.Context) bool {
+// viewerRole returns the platform-verified role set by the auth middleware.
+func (h *ZonePostHandler) viewerRole(c *gin.Context) string {
 	v, _ := c.Get("role")
 	role, _ := v.(string)
-	return role == "admin"
+	return role
+}
+
+func (h *ZonePostHandler) isAdmin(c *gin.Context) bool {
+	return h.viewerRole(c) == "admin"
 }
 
 // resolveZone looks up a zone by slug and checks that the current user has
@@ -58,7 +63,7 @@ func (h *ZonePostHandler) resolveZone(c *gin.Context) *uint {
 		token, _ := c.Get("token")
 		tk, _ := token.(string)
 		uid := h.viewerID(c)
-		decision := h.zoneSvc.CheckAccess(z, uid, tk)
+		decision := h.zoneSvc.CheckAccess(z, uid, tk, h.viewerRole(c))
 		if decision.Status != "allowed" {
 			pkg.Error(c, http.StatusForbidden, "zone access denied")
 			return nil

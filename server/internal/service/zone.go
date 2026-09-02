@@ -266,18 +266,28 @@ func (s *ZoneService) DeleteRule(zoneID, ruleID uint) error {
 
 // CheckAccess decides whether the given user can access the given zone.
 // userToken is the user's blog/core JWT (used to fetch their stored Discord
-// access_token from core).
+// access_token from core). role is the platform-verified role from the same
+// JWT (set by the auth middleware) — never trust a client-supplied value.
+//
+// Admins are exempt from gating: the blog owner must always be able to see
+// and moderate the zones they configured, independent of their own Discord
+// link state. The exemption is decided before any cache or Discord lookup.
 //
 // Caching: result is cached for 5 minutes per (zone, user) so we don't hammer
 // Discord on every page view; admin mutations invalidate per-zone, and we
 // also invalidate per-user when their Discord link state changes (handled in
 // auth handler — TODO once we wire it).
-func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken string) AccessDecision {
-	log.Printf("[zone-access] zone=%d visibility=%s rules_count=%d user=%d", z.ID, z.Visibility, len(z.Rules), userID)
+func (s *ZoneService) CheckAccess(z *model.Zone, userID uint, userToken, role string) AccessDecision {
+	log.Printf("[zone-access] zone=%d visibility=%s rules_count=%d user=%d role=%s", z.ID, z.Visibility, len(z.Rules), userID, role)
 	// Public zones always pass.
 	if z.Visibility == model.ZoneVisibilityPublic {
 		log.Printf("[zone-access] zone=%d EARLY allowed reason=public", z.ID)
 		return AccessDecision{Status: AccessStatusAllowed, Reason: "public", EvaluatedAt: time.Now()}
+	}
+	// Admins bypass gating entirely (also when no rules are configured yet).
+	if role == "admin" {
+		log.Printf("[zone-access] zone=%d EARLY allowed reason=admin user=%d", z.ID, userID)
+		return AccessDecision{Status: AccessStatusAllowed, Reason: "admin", EvaluatedAt: time.Now()}
 	}
 	// Gated but no rules configured — deny by default until admin adds rules.
 	if len(z.Rules) == 0 {

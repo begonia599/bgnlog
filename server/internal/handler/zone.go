@@ -77,10 +77,12 @@ func (h *ZoneHandler) CheckAccess(c *gin.Context) {
 
 	userID, _ := c.Get("user_id")
 	token, _ := c.Get("token")
+	roleV, _ := c.Get("role")
 	uid, _ := userID.(uint)
 	tk, _ := token.(string)
+	role, _ := roleV.(string)
 
-	decision := h.svc.CheckAccess(z, uid, tk)
+	decision := h.svc.CheckAccess(z, uid, tk, role)
 	pkg.Success(c, decision)
 }
 
