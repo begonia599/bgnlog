@@ -1,5 +1,5 @@
 import api from './client'
-import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision, ZonePost, ZonePostListResult, ZoneComment } from '@/types'
+import type { ApiResponse, Article, PaginatedData, Category, Tag, Comment, AuthTokens, UserProfile, OAuthAccountsData, Zone, ZoneRule, ZoneAccessDecision, ZonePost, ZonePostListResult, ZoneComment, SiteStats, SiteInfoSettings } from '@/types'
 
 // Auth
 export const authApi = {
@@ -155,4 +155,13 @@ export const settingsApi = {
   getHero: () => api.get<ApiResponse<HeroSettings>>('/api/settings/hero'),
   updateHero: (data: Partial<HeroSettings>) =>
     api.put<ApiResponse<HeroSettings>>('/api/settings/hero', data),
+  getSite: () => api.get<ApiResponse<SiteInfoSettings>>('/api/settings/site'),
+  updateSite: (data: { launched_at: string }) =>
+    api.put<ApiResponse<SiteInfoSettings>>('/api/settings/site', data),
+}
+
+// Site stats (floating widget): launch date + visit counters.
+export const statsApi = {
+  site: () => api.get<ApiResponse<SiteStats>>('/api/stats/site'),
+  visit: () => api.post<ApiResponse<{ counted: boolean }>>('/api/stats/visit'),
 }

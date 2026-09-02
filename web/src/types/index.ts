@@ -182,3 +182,15 @@ export interface ZoneComment {
   is_owner: boolean
   created_at: string
 }
+
+// Site stats widget
+export interface SiteStats {
+  launched_at: string
+  total_visits: number
+  today_visits: number
+}
+
+export interface SiteInfoSettings {
+  launched_at: string
+  is_default: boolean
+}

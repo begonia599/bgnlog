@@ -28,6 +28,7 @@ type Handlers struct {
 	Setting  *handler.SettingHandler
 	Zone     *handler.ZoneHandler
 	ZonePost *handler.ZonePostHandler
+	Stats    *handler.StatsHandler
 }
 
 func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk.Client, cfg *config.Config) {
@@ -101,6 +102,12 @@ func Setup(r *gin.Engine, h Handlers, auth *middleware.AuthMiddleware, plat *sdk
 		// Site settings
 		api.GET("/settings/hero", h.Setting.GetHero)
 		api.PUT("/settings/hero", auth.AuthRequired(), middleware.RequireRole("admin"), h.Setting.UpdateHero)
+		api.GET("/settings/site", h.Setting.GetSite)
+		api.PUT("/settings/site", auth.AuthRequired(), middleware.RequireRole("admin"), h.Setting.UpdateSite)
+
+		// Site stats — launch date + visit counters for the floating widget.
+		api.GET("/stats/site", h.Stats.GetSite)
+		api.POST("/stats/visit", h.Stats.RecordVisit)
 
 		// Zones — public listing + per-user access check.
 		api.GET("/zones", h.Zone.List)

@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [heroTitle, setHeroTitle] = useState('')
   const [heroSubtitle, setHeroSubtitle] = useState('')
   const [discordId, setDiscordId] = useState('')
+  const [launchedAt, setLaunchedAt] = useState('')
   const [heroSaving, setHeroSaving] = useState(false)
   const [heroSaved, setHeroSaved] = useState(false)
 
@@ -37,6 +38,9 @@ export default function AdminPage() {
       setHeroSubtitle(s.hero_subtitle || '')
       setDiscordId(s.discord_user_id || '')
     }).catch(() => {})
+    settingsApi.getSite().then((res) => {
+      setLaunchedAt(res.data.data.launched_at || '')
+    }).catch(() => {})
   }, [])
 
   const handleSaveHero = async () => {
@@ -47,6 +51,7 @@ export default function AdminPage() {
         hero_subtitle: heroSubtitle,
         discord_user_id: discordId,
       })
+      await settingsApi.updateSite({ launched_at: launchedAt })
       setHeroSaved(true)
       setTimeout(() => setHeroSaved(false), 2000)
     } catch (err) {
@@ -124,6 +129,18 @@ export default function AdminPage() {
                   <a href="https://discord.gg/lanyard" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
                     Lanyard 服务器
                   </a>
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label>运营起始日期</Label>
+                <Input
+                  type="date"
+                  value={launchedAt}
+                  onChange={(e) => setLaunchedAt(e.target.value)}
+                  className="w-fit"
+                />
+                <p className="text-[11px] text-muted-foreground/60">
+                  左侧悬浮窗的「已运行」从这一天零点开始计算；清空则回到默认的 2026-03-12
                 </p>
               </div>
             </div>
